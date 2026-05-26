@@ -755,7 +755,8 @@ def render_sidebar(summary_df: pd.DataFrame) -> str | None:
 
     picker_key = "channel_picker_value"
     if picker_key not in st.session_state:
-        st.session_state[picker_key] = query_channel
+        st.session_state[picker_key] = none_option
+        query_channel = none_option
 
     picked = st.sidebar.selectbox("분석할 채널", options, key=picker_key)
     active_channel = None if picked == none_option else picked
