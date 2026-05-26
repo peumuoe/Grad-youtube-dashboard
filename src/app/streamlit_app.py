@@ -737,9 +737,9 @@ def build_sidebar_logo_grid_html(channels: list[str], active_channel: str | None
 
 
 def render_sidebar(summary_df: pd.DataFrame) -> str | None:
-    none_option = "?? ? ?"
+    none_option = "선택 안 함"
 
-    st.sidebar.markdown("## ?? ??")
+    st.sidebar.markdown("## 채널 선택")
     channels = sorted(summary_df["channel_name"].dropna().astype(str).unique().tolist()) if not summary_df.empty else []
     options = [none_option] + channels
 
@@ -765,7 +765,7 @@ def render_sidebar(summary_df: pd.DataFrame) -> str | None:
     if st.session_state.get("channel_picker") != active_channel:
         st.session_state["channel_picker"] = active_channel
 
-    picked = st.sidebar.selectbox("??? ??", options, key="channel_picker")
+    picked = st.sidebar.selectbox("분석할 채널", options, key="channel_picker")
 
     if picked != st.session_state.get("selected_channel_name", none_option):
         st.session_state["selected_channel_name"] = picked
@@ -775,8 +775,8 @@ def render_sidebar(summary_df: pd.DataFrame) -> str | None:
             st.query_params["selected_channel"] = picked
         st.rerun()
 
-    st.sidebar.caption("???? ?? ??? ???? ????. ?? ??? ???, ? ??? ??? ?? ???? ????.")
-    st.sidebar.markdown("### ??? ??")
+    st.sidebar.caption("처음에는 아무 채널도 선택되지 않습니다. 채널 하나를 고르면, 그 채널만 자세히 읽는 화면으로 바뀝니다.")
+    st.sidebar.markdown("### 빠르게 선택")
     st.sidebar.markdown(
         build_sidebar_logo_grid_html(channels, None if picked == none_option else picked),
         unsafe_allow_html=True,
