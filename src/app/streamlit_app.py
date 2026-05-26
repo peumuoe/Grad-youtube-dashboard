@@ -178,6 +178,15 @@ def normalize_channel_name(value: object) -> str:
     return str(value).strip()
 
 
+def display_channel_name(value: object) -> str:
+    channel = normalize_channel_name(value)
+    display_map = {
+        "MBCNEWS": "MBC NEWS",
+        "뉴스TVCHOSUN": "뉴스TV CHOSUN",
+    }
+    return display_map.get(channel, channel)
+
+
 def normalize_channel_column(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty or "channel_name" not in df.columns:
         return df
@@ -761,22 +770,22 @@ def build_sidebar_channel_list_html(
     active_channel: str | None,
     none_option: str = "선택 안 함",
 ) -> str:
-    parts = []
+    parts = ['<div class="sidebar-channel-list">']
+    for channel in channels:
+        active_class = ' active' if channel == active_channel else ''
+        channel_param = quote(channel.strip())
+        display_name = display_channel_name(channel)
+        parts.append(
+            f'<a class="sidebar-channel-link{active_class}" href="?selected_channel={channel_param}" target="_self" title="{channel.strip()}">'
+            f'{sidebar_logo_html(channel)}'
+            f'<span class="sidebar-channel-label">{display_name}</span>'
+            '</a>'
+        )
+    parts.append('</div>')
     none_active = ' active' if active_channel is None else ''
     parts.append(
         f'<a class="sidebar-none-button{none_active}" href="?" target="_self" title="{none_option}">{none_option}</a>'
     )
-    parts.append('<div class="sidebar-channel-list">')
-    for channel in channels:
-        active_class = ' active' if channel == active_channel else ''
-        channel_param = quote(channel.strip())
-        parts.append(
-            f'<a class="sidebar-channel-link{active_class}" href="?selected_channel={channel_param}" target="_self" title="{channel.strip()}">'
-            f'{sidebar_logo_html(channel)}'
-            f'<span class="sidebar-channel-label">{channel.strip()}</span>'
-            '</a>'
-        )
-    parts.append('</div>')
     return ''.join(parts)
 
 
@@ -1053,12 +1062,13 @@ def channel_logo_badge(channel_name: str) -> str:
 
 
 def render_channel_header(channel_name: str, channel_type: str) -> None:
+    display_name = display_channel_name(channel_name)
     st.markdown(
         f"""
         <div class="channel-head">
             {channel_logo_badge(channel_name)}
             <div>
-                <div class="channel-name">{channel_name.strip()}</div>
+                <div class="channel-name">{display_name}</div>
                 <div class="channel-sub">{channel_badge_html(channel_type)}</div>
             </div>
         </div>
