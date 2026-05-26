@@ -1,0 +1,108 @@
+project_name: "iran war youtube analysis"
+
+date_range:
+  start_date: "2026-03-01"
+  end_date: "2026-03-31"
+
+language: "ko"
+region_code: "KR"
+
+youtube:
+  max_search_pages_per_keyword: 5
+  max_results_per_page: 50
+  fetch_video_details: true
+  fetch_comments: true
+  fetch_replies: false
+  fetch_transcripts: false
+
+comment_selection:
+  max_comments_relevance: 30
+  max_comments_time: 20
+  min_comment_length: 15
+  max_comments_per_author: 2
+  remove_url_only: true
+  remove_emoji_only: true
+  remove_ad_comments: true
+
+keywords:
+  primary:
+    - "이란 전쟁"
+    - "이스라엘 이란 전쟁"
+    - "미국 이란 전쟁"
+    - "중동 확전"
+    - "이란 공습"
+    - "이란 보복 공격"
+    - "호르무즈 해협 전쟁"
+  secondary:
+    - "국제유가 중동 전쟁"
+    - "LNG 중동 확전"
+    - "한국 이란 전쟁 영향"
+    - "이란 핵시설 공습"
+    - "이스라엘 공습 이란"
+  exclusion:
+    - "게임"
+    - "영화"
+    - "드라마"
+    - "브이로그"
+    - "먹방"
+
+channel_filter:
+  include_keywords:
+    - "뉴스"
+    - "보도"
+    - "방송"
+    - "시사"
+    - "경제"
+  exclude_keywords:
+    - "브이로그"
+    - "먹방"
+    - "주식 리딩"
+    - "투자 추천"
+    - "코인 리딩"
+
+video_filter:
+  exclude_keywords:
+    - "shorts"
+    - "쇼츠"
+    - "실시간"
+    - "live"
+
+preprocess:
+  remove_urls: true
+  remove_special_characters: true
+  normalize_whitespace: true
+  lowercase_english: true
+  remove_non_korean_noise: true
+  use_morph_tokenizer: true
+  stopwords_file: "config/stopwords_ko.txt"
+
+analysis:
+  topic_model: "bertopic"
+  embedding_model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  fallback_topic_model: "lda"
+
+frame_labels:
+  - "안보·군사"
+  - "국제정치·외교"
+  - "경제·에너지"
+  - "투자·시장"
+  - "인도주의·민간피해"
+  - "기타/혼합"
+
+ideology:
+  score_min: -1.0
+  score_max: 1.0
+  labels:
+    progressive: "진보적 기울기"
+    neutral: "혼합/중간"
+    conservative: "보수적 기울기"
+
+paths:
+  raw_data_dir: "data/raw"
+  processed_data_dir: "data/processed"
+  figures_dir: "outputs/figures"
+  tables_dir: "outputs/tables"
+  collect_dir: "src/collect"
+  preprocess_dir: "src/preprocess"
+  analyze_dir: "src/analyze"
+  app_dir: "src/app"

@@ -1,0 +1,4 @@
+label,label_score,recommended_use,description
+usable,3,full_analysis,Mostly understandable and close enough to the source to use for topic/frame analysis after light review.
+partially_usable,2,limited_analysis,Core topic is identifiable but sentence-level errors are frequent, so use cautiously.
+not_usable,1,exclude_or_manual_fix,Meaning is heavily distorted or the wrong language was detected, so do not use directly.

@@ -1,0 +1,21 @@
+priority,wrong_text,corrected_text,active_flag,note
+1,이쓰라엘,이스라엘,1,common ASR spelling correction
+1,이스라앨,이스라엘,1,common ASR spelling correction
+1,이슬라엘,이스라엘,1,common ASR spelling correction
+1,이쓰라일,이스라엘,1,common ASR spelling correction
+1,호르즈무 해협,호르무즈 해협,1,common geography correction
+1,호르무즈해협,호르무즈 해협,1,common spacing normalization
+1,호르모즈 해협,호르무즈 해협,1,common geography correction
+1,텔아비부,텔아비브,1,common place-name correction
+1,텔아비브부,텔아비브,1,common place-name correction
+1,헤즈볼라라,헤즈볼라,1,common organization-name correction
+1,헤즈볼라흐,헤즈볼라,1,common organization-name correction
+1,네타냐후우,네타냐후,1,common person-name correction
+1,트럼프프,트럼프,1,common person-name correction
+1,휴전 안,휴전안,1,common spacing normalization
+1,지상 군,지상군,1,common spacing normalization
+1,고유 가,국제유가,1,energy-topic correction
+1,LNG가스,LNG,1,normalization
+1,엔엘지,LNG,1,normalization
+2,중독,중동,1,common ASR substitution in issue context
+2,이란이,이란,0,disabled because overcorrection risk is high

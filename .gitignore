@@ -1,0 +1,39 @@
+# Environment and secrets
+.env
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local logs and runtime artifacts
+logs/
+*.log
+
+# Raw and working data not needed for dashboard deployment
+data/raw/
+data/processed/
+
+# Keep the dashboard app outputs lean: ignore all generated tables by default
+outputs/tables/*
+
+# Required dashboard tables
+!outputs/tables/channel_analysis_summary.csv
+!outputs/tables/topic_summary.csv
+!outputs/tables/topic_video_assignments.csv
+!outputs/tables/topic_summary_script.csv
+!outputs/tables/topic_video_assignments_script.csv
+!outputs/tables/channel_frame_distribution.csv
+!outputs/tables/channel_audience_reaction_distribution.csv
+!outputs/tables/audience_video_reaction_summary.csv
+
+# All generated figures and reports are excluded from deployment
+outputs/figures/
+outputs/report/
+outputs/report_check_pages/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

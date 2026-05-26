@@ -1,0 +1,13 @@
+channel_name,base_domain,article_url_contains,title_selector,body_selector,active_flag,notes
+JTBC News,news.jtbc.co.kr,jtbc,h1,article,1,JTBC web article default
+KBS News,news.kbs.co.kr,kbs,,article,1,KBS web article default
+MBCNEWS,imnews.imbc.com,imbc,,article,1,MBC web article default
+MBN News,mbn.co.kr,mbn,,article,1,MBN web article default
+SBS 뉴스,news.sbs.co.kr,sbs,,article,1,SBS web article default
+SBS Biz 뉴스,biz.sbs.co.kr,sbs,,article,1,SBS Biz web article default
+뉴스TVCHOSUN,news.tvchosun.com,tvchosun,,article,1,TVCHOSUN web article default
+연합뉴스TV,yonhapnewstv.co.kr,yonhapnewstv,,article,1,YonhapTV web article default
+채널A News,ichannela.com,ichannela,,article,1,Channel A web article default
+한국경제TV,wowtv.co.kr,wowtv,,article,1,HankyungTV web article default
+매일경제TV,mbnmoney.mbn.co.kr,mbn,,article,1,Maeil economy TV fallback
+YTN,ytn.co.kr,ytn,,article,1,YTN web article default
