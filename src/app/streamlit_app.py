@@ -359,17 +359,16 @@ def apply_page_style() -> None:
             font-weight: 750;
         }
         .sidebar-logo-wrap {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
             overflow: hidden;
             background: #ffffff;
             border: 1px solid rgba(226,232,240,0.9);
-            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 8px;
         }
         .sidebar-logo-wrap img {
             width: 100%;
@@ -378,14 +377,38 @@ def apply_page_style() -> None:
             object-position: center;
             background: #ffffff;
             display: block;
-            padding: 4px;
+            padding: 3px;
             box-sizing: border-box;
         }
         .sidebar-channel-list {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-top: 0.5rem;
+            gap: 8px;
+            margin-top: 0.35rem;
+        }
+        .sidebar-none-button {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            background: rgba(255,255,255,0.9);
+            border: 1px solid rgba(226,232,240,0.95);
+            border-radius: 12px;
+            padding: 8px 12px;
+            margin: 0.35rem 0 0.6rem 0;
+            color: #0f172a;
+            font-size: 0.94rem;
+            font-weight: 750;
+            transition: all 0.18s ease;
+        }
+        .sidebar-none-button:hover {
+            border-color: rgba(59,130,246,0.36);
+            box-shadow: 0 6px 14px rgba(15,23,42,0.05);
+            transform: translateY(-1px);
+        }
+        .sidebar-none-button.active {
+            border-color: rgba(59,130,246,0.55);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.14), 0 8px 16px rgba(15,23,42,0.06);
+            background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(239,246,255,0.95));
         }
         .sidebar-channel-link {
             display: flex;
@@ -394,8 +417,8 @@ def apply_page_style() -> None:
             text-decoration: none;
             background: rgba(255,255,255,0.88);
             border: 1px solid rgba(226,232,240,0.95);
-            border-radius: 14px;
-            padding: 8px 10px;
+            border-radius: 12px;
+            padding: 7px 9px;
             transition: all 0.18s ease;
         }
         .sidebar-channel-link:hover {
@@ -405,7 +428,7 @@ def apply_page_style() -> None:
         }
         .sidebar-channel-link.active {
             border-color: rgba(59,130,246,0.55);
-            box-shadow: 0 0 0 2px rgba(59,130,246,0.16), 0 8px 16px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.14), 0 8px 16px rgba(15, 23, 42, 0.06);
             background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(239,246,255,0.95));
         }
         .sidebar-channel-link.active .sidebar-logo-wrap {
@@ -413,12 +436,9 @@ def apply_page_style() -> None:
         }
         .sidebar-channel-label {
             color: #0f172a;
-            font-size: 0.95rem;
+            font-size: 0.92rem;
             font-weight: 700;
             line-height: 1.25;
-        }
-        .sidebar-channel-link.none-option {
-            justify-content: center;
         }
         .sidebar-brand-fallback {
             width: 100%;
@@ -741,13 +761,12 @@ def build_sidebar_channel_list_html(
     active_channel: str | None,
     none_option: str = "선택 안 함",
 ) -> str:
-    parts = ['<div class="sidebar-channel-list">']
+    parts = []
     none_active = ' active' if active_channel is None else ''
     parts.append(
-        f'<a class="sidebar-channel-link none-option{none_active}" href="?" target="_self" title="{none_option}">'
-        f'<span class="sidebar-channel-label">{none_option}</span>'
-        '</a>'
+        f'<a class="sidebar-none-button{none_active}" href="?" target="_self" title="{none_option}">{none_option}</a>'
     )
+    parts.append('<div class="sidebar-channel-list">')
     for channel in channels:
         active_class = ' active' if channel == active_channel else ''
         channel_param = quote(channel.strip())
