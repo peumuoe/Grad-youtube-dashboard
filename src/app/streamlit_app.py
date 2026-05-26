@@ -381,20 +381,44 @@ def apply_page_style() -> None:
             padding: 4px;
             box-sizing: border-box;
         }
-        .sidebar-logo-grid {
+        .sidebar-channel-list {
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-top: 6px;
+            margin-top: 0.5rem;
         }
-        .sidebar-logo-link {
-            display: inline-block;
-            width: 38px;
+        .sidebar-channel-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             text-decoration: none;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid rgba(226,232,240,0.95);
+            border-radius: 14px;
+            padding: 8px 10px;
+            transition: all 0.18s ease;
         }
-        .sidebar-logo-link.active .sidebar-logo-wrap {
-            box-shadow: 0 0 0 2px rgba(59,130,246,0.28), 0 8px 16px rgba(15, 23, 42, 0.08);
+        .sidebar-channel-link:hover {
+            border-color: rgba(59,130,246,0.36);
+            box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+            transform: translateY(-1px);
+        }
+        .sidebar-channel-link.active {
             border-color: rgba(59,130,246,0.55);
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.16), 0 8px 16px rgba(15, 23, 42, 0.08);
+            background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(239,246,255,0.95));
+        }
+        .sidebar-channel-link.active .sidebar-logo-wrap {
+            border-color: rgba(59,130,246,0.55);
+        }
+        .sidebar-channel-label {
+            color: #0f172a;
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+        .sidebar-channel-link.none-option {
+            justify-content: center;
         }
         .sidebar-brand-fallback {
             width: 100%;
@@ -405,15 +429,6 @@ def apply_page_style() -> None:
             font-size: 0.72rem;
             font-weight: 800;
             color: #ffffff;
-        }
-        .sidebar-logo-link {
-            display: inline-block;
-            text-decoration: none;
-            margin-bottom: 8px;
-        }
-        .sidebar-logo-link.active .sidebar-logo-wrap {
-            box-shadow: 0 0 0 2px rgba(59,130,246,0.28), 0 8px 16px rgba(15, 23, 42, 0.08);
-            border-color: rgba(59,130,246,0.55);
         }
         .overview-card {
             background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(247,250,252,0.96));
@@ -721,14 +736,25 @@ def sidebar_logo_html(channel_name: str) -> str:
 
 
 
-def build_sidebar_logo_grid_html(channels: list[str], active_channel: str | None) -> str:
-    parts = ['<div class="sidebar-logo-grid">']
+def build_sidebar_channel_list_html(
+    channels: list[str],
+    active_channel: str | None,
+    none_option: str = "선택 안 함",
+) -> str:
+    parts = ['<div class="sidebar-channel-list">']
+    none_active = ' active' if active_channel is None else ''
+    parts.append(
+        f'<a class="sidebar-channel-link none-option{none_active}" href="?" target="_self" title="{none_option}">'
+        f'<span class="sidebar-channel-label">{none_option}</span>'
+        '</a>'
+    )
     for channel in channels:
         active_class = ' active' if channel == active_channel else ''
         channel_param = quote(channel.strip())
         parts.append(
-            f'<a class="sidebar-logo-link{active_class}" href="?selected_channel={channel_param}" target="_self" title="{channel.strip()}">'
+            f'<a class="sidebar-channel-link{active_class}" href="?selected_channel={channel_param}" target="_self" title="{channel.strip()}">'
             f'{sidebar_logo_html(channel)}'
+            f'<span class="sidebar-channel-label">{channel.strip()}</span>'
             '</a>'
         )
     parts.append('</div>')
@@ -742,7 +768,6 @@ def render_sidebar(summary_df: pd.DataFrame) -> str | None:
 
     st.sidebar.markdown("## 채널 선택")
     channels = sorted(summary_df["channel_name"].dropna().astype(str).unique().tolist()) if not summary_df.empty else []
-    options = [none_option] + channels
 
     query_channel = st.query_params.get("selected_channel")
     if query_channel is None:
@@ -750,27 +775,13 @@ def render_sidebar(summary_df: pd.DataFrame) -> str | None:
     if isinstance(query_channel, list):
         query_channel = query_channel[0] if query_channel else None
     query_channel = normalize_channel_name(query_channel) if query_channel else none_option
-    if query_channel not in options:
+    if query_channel not in ([none_option] + channels):
         query_channel = none_option
 
-    picker_key = "channel_picker_value"
-    if picker_key not in st.session_state:
-        st.session_state[picker_key] = none_option
-        query_channel = none_option
-
-    picked = st.sidebar.selectbox("분석할 채널", options, key=picker_key)
-    active_channel = None if picked == none_option else picked
-
-    if picked != query_channel:
-        if picked == none_option:
-            st.query_params.clear()
-        else:
-            st.query_params["selected_channel"] = picked
-        st.rerun()
-
-    st.sidebar.markdown("### 빠르게 선택")
+    st.sidebar.markdown("### 분석할 채널")
+    active_channel = None if query_channel == none_option else query_channel
     st.sidebar.markdown(
-        build_sidebar_logo_grid_html(channels, active_channel),
+        build_sidebar_channel_list_html(channels, active_channel, none_option=none_option),
         unsafe_allow_html=True,
     )
 
