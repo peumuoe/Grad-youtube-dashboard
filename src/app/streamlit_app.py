@@ -736,10 +736,11 @@ def build_sidebar_logo_grid_html(channels: list[str], active_channel: str | None
 
 
 
-def render_sidebar(summary_df: pd.DataFrame) -> str | None:
-    none_option = "?? ? ?"
 
-    st.sidebar.markdown("## ?? ??")
+def render_sidebar(summary_df: pd.DataFrame) -> str | None:
+    none_option = "선택 안 함"
+
+    st.sidebar.markdown("## 채널 선택")
     channels = sorted(summary_df["channel_name"].dropna().astype(str).unique().tolist()) if not summary_df.empty else []
     options = [none_option] + channels
 
@@ -752,21 +753,21 @@ def render_sidebar(summary_df: pd.DataFrame) -> str | None:
     if query_channel not in options:
         query_channel = none_option
 
-    if "channel_picker" not in st.session_state:
-        st.session_state["channel_picker"] = query_channel
-    elif query_channel != none_option and st.session_state["channel_picker"] != query_channel:
-        st.session_state["channel_picker"] = query_channel
+    picker_key = "channel_picker_value"
+    if picker_key not in st.session_state:
+        st.session_state[picker_key] = query_channel
 
-    picked = st.sidebar.selectbox("??? ??", options, key="channel_picker")
+    picked = st.sidebar.selectbox("분석할 채널", options, key=picker_key)
+    active_channel = None if picked == none_option else picked
 
-    if picked == none_option:
-        st.query_params.clear()
-        active_channel = None
-    else:
-        st.query_params["selected_channel"] = picked
-        active_channel = picked
+    if picked != query_channel:
+        if picked == none_option:
+            st.query_params.clear()
+        else:
+            st.query_params["selected_channel"] = picked
+        st.rerun()
 
-    st.sidebar.markdown("### ??? ??")
+    st.sidebar.markdown("### 빠르게 선택")
     st.sidebar.markdown(
         build_sidebar_logo_grid_html(channels, active_channel),
         unsafe_allow_html=True,
@@ -779,8 +780,8 @@ def render_empty_state() -> None:
     st.markdown(
         """
         <div class="empty-state">
-            <div class="empty-title">??? ?? ??? ???</div>
-            <div>???? ?? ??? ???, ? ??? ?? ??? ??? ??? ? ??? ?????.</div>
+            <div class="empty-title">채널을 먼저 선택해 주세요</div>
+            <div>왼쪽에서 채널 하나를 고르면, 그 채널의 보도 특징과 시청자 반응이 한 화면에 정리됩니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1041,10 +1042,10 @@ def build_channel_summary_text(channel_row: pd.Series, topic_name_map: dict[str,
     dominant_reaction = str(channel_row.get("dominant_audience_reaction", "??/??"))
     direction = classify_direction(float(channel_row.get("ideology_relative_score", 0.0)))
     return (
-        f"? ??? ?? ??? ?? {dominant_frame} ???? ???, "
-        f"?? {dominant_topic} ??? ?? ????. "
-        f"????? {dominant_reaction} ??? ?? ????, "
-        f"?????? {direction} ??? ? ??????."
+        f"? ë¶ìí  ì±ë ë¶ìí  ì±ë {dominant_frame} ?ë¶ìí  ì±ë?, "
+        f"?? {dominant_topic} ë¶ìí  ì±ë ????. "
+        f"????? {dominant_reaction} ë¶ìí  ì±ë ????, "
+        f"?????? {direction} ?ì í ì í¨?????."
     )
 
 
@@ -1054,7 +1055,7 @@ def render_channel_overview(channel_row: pd.Series, topic_name_map: dict[str, st
     st.markdown(
         f"""
         <div class="overview-card">
-            <div class="overview-title">?? ??? ??</div>
+            <div class="overview-title">?? ë¶ìí  ì±ë</div>
             <div class="overview-text">{summary_text}</div>
         </div>
         """,
