@@ -5,6 +5,7 @@ import base64
 import json
 from pathlib import Path
 import re
+import sys
 from urllib.parse import quote
 
 import pandas as pd
@@ -12,11 +13,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from src.analyze.boilerplate_filters import strip_boilerplate
 from src.analyze.topic_modeling import DEFAULT_STOPWORDS
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TABLE_DIR = PROJECT_ROOT / "outputs" / "tables"
 LOGO_DIR = PROJECT_ROOT / "src" / "app" / "assets" / "logos"
 LOGO_MAP_PATH = LOGO_DIR / "channel_logo_map.json"
