@@ -5,8 +5,6 @@ from typing import Any
 import re
 
 import pandas as pd
-from sklearn.decomposition import NMF
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 from src.analyze.boilerplate_filters import strip_boilerplate
 
@@ -132,6 +130,9 @@ def run_topic_model(
     random_state: int = 42,
 ) -> TopicModelArtifacts:
     """Run a lightweight TF-IDF + NMF topic model over topic input text."""
+    from sklearn.decomposition import NMF
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
     working_df = topic_df.copy()
     working_df["topic_text"] = working_df["topic_text"].fillna("").astype(str).str.strip()
     working_df["topic_text_cleaned"] = working_df["topic_text"].apply(strip_boilerplate)
