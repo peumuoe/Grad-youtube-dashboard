@@ -1942,6 +1942,70 @@ def build_script_keyword_treemap_markup(topic_video_df: pd.DataFrame) -> str:
     return _build_keyword_treemap_markup(chart_df, "#DBEAFE", "#1D4ED8")
 
 
+def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
+    fallback_columns = (
+        "topic_text_cleaned",
+        "topic_text",
+        "best_transcript_text",
+        "transcript_text",
+        "script_text",
+        "text",
+    )
+    text_series = pd.Series(dtype=str)
+    for column in fallback_columns:
+        if column not in topic_video_df.columns:
+            continue
+        candidate_series = topic_video_df[column].fillna("").astype(str)
+        if candidate_series.str.strip().ne("").any():
+            text_series = candidate_series
+            break
+
+    if text_series.empty:
+        return go.Figure()
+
+    token_counter = extract_keyword_counter(text_series.apply(strip_boilerplate))
+    keyword_rows = [{"keyword": word, "count": count} for word, count in token_counter.most_common(12)]
+    if not keyword_rows:
+        return go.Figure()
+
+    chart_df = pd.DataFrame(keyword_rows).sort_values("count", ascending=True).copy()
+    total = float(chart_df["count"].sum()) or 1.0
+    chart_df["share_pct"] = chart_df["count"] / total * 100.0
+
+    fig = go.Figure(
+        go.Bar(
+            x=chart_df["share_pct"],
+            y=chart_df["keyword"],
+            orientation="h",
+            marker=dict(
+                color="#4F7DFF",
+                line=dict(color="rgba(79,125,255,0.18)", width=1),
+            ),
+            text=[f"{value:.1f}%" for value in chart_df["share_pct"]],
+            textposition="outside",
+            hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        height=340,
+        margin=dict(l=90, r=24, t=8, b=12),
+        xaxis_title="비중(%)",
+        yaxis_title="",
+        xaxis=dict(
+            tickfont=dict(size=11, color="#64748B"),
+            title_font=dict(size=12, color="#475569"),
+            gridcolor="rgba(148,163,184,0.18)",
+        ),
+        yaxis=dict(
+            tickfont=dict(size=12, color="#334155"),
+            automargin=True,
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
+
+
 def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
     summary_df = filter_df(data["summary"], channel)
     topic_video_df = filter_df(data["topic_video"], channel)
@@ -2092,10 +2156,14 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
             "제목·설명 문구가 아니라 실제 스크립트 본문에서 나온 단어 빈도를 집계한 결과입니다.",
         )
         script_keyword_markup = build_script_keyword_treemap_markup(topic_video_script_df)
-        if script_keyword_markup:
+        if script_keyword_markup and channel != "YTN":
             st.markdown(script_keyword_markup, unsafe_allow_html=True)
         else:
-            st.info("현재 스크립트 핵심 단어를 만들 수 없어 이 영역을 비워두었습니다.")
+            script_keyword_fig = build_script_keyword_bar_chart(topic_video_script_df)
+            if script_keyword_fig.data:
+                st.plotly_chart(script_keyword_fig, use_container_width=True)
+            else:
+                st.info("현재 스크립트 핵심 단어를 만들 수 없어 이 영역을 비워두었습니다.")
 
 
 def main() -> None:
