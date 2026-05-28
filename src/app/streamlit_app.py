@@ -1913,11 +1913,25 @@ def build_script_keyword_bar(topic_video_df: pd.DataFrame) -> go.Figure:
 
 
 def build_script_keyword_treemap_markup(topic_video_df: pd.DataFrame) -> str:
-    cleaned_series = topic_video_df.get("topic_text_cleaned", pd.Series(dtype=str))
-    cleaned_series = cleaned_series.fillna("").astype(str)
-    if cleaned_series.str.strip().eq("").all():
-        cleaned_series = topic_video_df.get("best_transcript_text", pd.Series(dtype=str)).fillna("").astype(str)
-    text_series = cleaned_series.apply(strip_boilerplate)
+    fallback_columns = (
+        "topic_text_cleaned",
+        "topic_text",
+        "best_transcript_text",
+        "transcript_text",
+        "script_text",
+        "text",
+    )
+    text_series = pd.Series(dtype=str)
+    for column in fallback_columns:
+        if column not in topic_video_df.columns:
+            continue
+        candidate_series = topic_video_df[column].fillna("").astype(str)
+        if candidate_series.str.strip().ne("").any():
+            text_series = candidate_series
+            break
+    if text_series.empty:
+        return ""
+    text_series = text_series.apply(strip_boilerplate)
     token_counter = extract_keyword_counter(text_series)
 
     keyword_rows = [{"keyword": word, "count": count} for word, count in token_counter.most_common(15)]
@@ -2077,7 +2091,11 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
             "영상 본문 스크립트에서 반복해서 많이 등장한 표현입니다.",
             "제목·설명 문구가 아니라 실제 스크립트 본문에서 나온 단어 빈도를 집계한 결과입니다.",
         )
-        st.markdown(build_script_keyword_treemap_markup(topic_video_script_df), unsafe_allow_html=True)
+        script_keyword_markup = build_script_keyword_treemap_markup(topic_video_script_df)
+        if script_keyword_markup:
+            st.markdown(script_keyword_markup, unsafe_allow_html=True)
+        else:
+            st.info("현재 스크립트 핵심 단어를 만들 수 없어 이 영역을 비워두었습니다.")
 
 
 def main() -> None:
