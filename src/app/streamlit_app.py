@@ -2157,11 +2157,7 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
         )
         script_keyword_markup = build_script_keyword_treemap_markup(topic_video_script_df)
         script_keyword_fig = build_script_keyword_bar_chart(topic_video_script_df)
-        if channel == "YTN":
-            st.caption(
-                f"진단: rows={len(topic_video_script_df)}, markup_len={len(script_keyword_markup)}, fig_data={len(script_keyword_fig.data)}"
-            )
-        if script_keyword_markup and channel != "YTN":
+        if script_keyword_markup:
             st.markdown(script_keyword_markup, unsafe_allow_html=True)
         else:
             if script_keyword_fig.data:
