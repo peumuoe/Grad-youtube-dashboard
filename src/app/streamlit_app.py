@@ -18,7 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.analyze.boilerplate_filters import strip_boilerplate
-from src.analyze.topic_modeling import DEFAULT_STOPWORDS
+from src.analyze.topic_modeling import DEFAULT_STOPWORDS, TOPIC_NOISE_TERMS
 
 TABLE_DIR = PROJECT_ROOT / "outputs" / "tables"
 LOGO_DIR = PROJECT_ROOT / "src" / "app" / "assets" / "logos"
@@ -857,28 +857,111 @@ def build_topic_name_map(topic_summary_df: pd.DataFrame) -> dict[str, str]:
     if topic_summary_df.empty:
         return {}
 
+    topic_label_noise_terms = {
+        "앵커",
+        "기자",
+        "채널",
+        "메일",
+        "social",
+        "검색해",
+        "추가",
+        "프로그램",
+        "시사",
+        "유튜브",
+        "뉴스데스크",
+        "뉴스투데이",
+        "뉴스zip",
+        "자세한",
+        "내용은",
+        "확인하실",
+        "바랍니다",
+        "있는",
+        "있습니다",
+        "있을",
+        "그런",
+        "그런데",
+        "그래서",
+        "이렇게",
+        "때문에",
+        "도널드",
+        "00",
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+        "the",
+        "and",
+        "you",
+        "that",
+        "they",
+        "with",
+        "from",
+        "into",
+        "have",
+        "this",
+        "your",
+        "입장",
+        "가지",
+        "일단",
+        "있지",
+        "것들",
+        "같습니다",
+        "문제",
+        "것이",
+        "상당히",
+        "하나",
+        "그니까",
+        "있기",
+        "없는",
+        "그게",
+        "수도",
+        "가능성",
+        "거기",
+        "보니까",
+        "하면",
+        "수밖",
+        "여기",
+        "봤을",
+        "되고",
+    }
     topic_name_map: dict[str, str] = {}
     for row in topic_summary_df.itertuples(index=False):
         label = str(getattr(row, "topic_label", ""))
         terms = [term.strip() for term in str(getattr(row, "top_terms", "") or "").split(",") if term.strip()]
         joined = " ".join(terms[:8])
+        noise_hits = sum(1 for term in terms[:8] if term in topic_label_noise_terms)
+        has_foreign_noise = any(re.search(r"[\u0600-\u06FF]", term) for term in terms[:8])
 
-        if "호르무즈" in joined or "해협" in joined or "원유" in joined or "선박" in joined:
+        if noise_hits >= 3 or has_foreign_noise:
+            topic_name = "기타/혼합 주제"
+        elif "호르무즈" in joined or "해협" in joined or "원유" in joined or "선박" in joined:
             topic_name = "호르무즈 해협과 원유 수송"
+        elif any(term in joined for term in ["드론", "미군", "작전", "타격", "기지", "탄도", "군사", "혁명 수비대"]):
+            topic_name = "이란-이스라엘 군사 충돌"
         elif "트럼프" in joined or "대통령" in joined or "미국" in joined:
             topic_name = "트럼프와 미국 대응"
-        elif "이란" in joined and "이스라엘" in joined and ("미사일" in joined or "공습" in joined or "공격" in joined):
-            topic_name = "이란-이스라엘 군사 충돌"
-        elif "유가" in joined or "코스피" in joined or "반도체" in joined or "환율" in joined or "코스닥" in joined:
+        elif any(term in joined for term in ["유가", "코스피", "반도체", "환율", "코스닥", "증시", "배럴당", "주유소"]):
             topic_name = "전쟁의 시장·투자 충격"
+        elif any(term in joined for term in ["카타르", "가스전", "lng", "에너지", "석유", "가스"]):
+            topic_name = "가스전·에너지 시설 충돌"
+        elif any(term in joined for term in ["일본", "중국", "파병", "총리", "회담", "요청", "영국", "프랑스"]):
+            topic_name = "국제 대응과 파병 논의"
+        elif any(term in joined for term in ["하메네", "모즈타바", "후계자", "최고지도자", "차남"]):
+            topic_name = "하메네이 후계 구도와 지도부 위기"
         elif "기자" in joined or "채널" in joined or "social" in joined or "메일" in joined:
-            topic_name = "채널 안내·부가 문구"
+            topic_name = "기타/혼합 주제"
         elif "뉴스데스크" in joined or "뉴스투데이" in joined or "뉴스zip" in joined:
-            topic_name = "뉴스 포맷·프로그램 묶음"
+            topic_name = "기타/혼합 주제"
         elif "시사" in joined or "프로그램" in joined or "유튜브" in joined:
-            topic_name = "프로그램 소개·부가 문구"
+            topic_name = "기타/혼합 주제"
         elif "앵커" in joined or "있습니다" in joined or "그런" in joined or "그런데" in joined:
-            topic_name = "진행 멘트·일반 설명"
+            topic_name = "기타/혼합 주제"
         else:
             topic_name = " / ".join(terms[:3]) if terms else label
 
@@ -890,7 +973,7 @@ def get_topic_display_name(topic_name_map: dict[str, str], label: str) -> str:
     if not label:
         return "주요 이슈"
     mapped = topic_name_map.get(label, label)
-    return "기타/혼합 주제" if mapped == "채널 안내·부가 문구" else mapped
+    return "기타/혼합 주제" if mapped in TOPIC_NOISE_TERMS else mapped
 
 
 def classify_direction(score: float) -> str:
@@ -1388,12 +1471,60 @@ KEYWORD_HARD_FILTERS = {
     "때문에",
     "발행",
     "발행합니",
+    "대통령은",
+    "대통령이",
+    "대통령의",
+    "이란의",
+    "이스라엘의",
+    "미국과",
+    "미국이",
+    "해협을",
+    "공격을",
+    "그런",
+    "그런데",
+    "그래서",
+    "이렇게",
+    "하고",
+    "하는",
+    "이게",
+    "우리가",
+    "어떻게",
+    "바랍니다",
+    "밝혔습니다",
+    "말했습니다",
+    "있을",
+    "있으며",
+    "오늘은",
+    "아랍",
+    "입니",
+    "입장",
+    "가지",
+    "일단",
+    "있지",
+    "것들",
+    "것이",
+    "상당히",
+    "하나",
+    "그니까",
+    "있기",
+    "정도",
+    "부분",
+    "아마",
+    "생각",
+    "문제",
 }
 
 
 KEYWORD_ENDING_PATTERNS = (
     r"(있습니다|했습니다|합니다|였습니다|됩니다)$",
     r"(이라고|라고|이며|인데)$",
+)
+
+KEYWORD_NOISE_PATTERNS = (
+    r"^(그런|그런데|그래서|이렇게|이게|우리가|어떻게|하기|통해|위해|대한|대해|관련|추가|이번|이제)$",
+    r"^(있다|있는|있을|있으며|있다고|말했다|말했습니다|밝혔다|밝혔습니다|전했다|전했습니다)$",
+    r"^(대통령은|대통령이|대통령의|이란의|이스라엘의|미국과|미국이|해협을|공격을)$",
+    r"^(입장|가지|일단|있지|것들|것이|상당히|하나|그니까|있기|정도|부분|아마|생각|문제)$",
 )
 
 
@@ -1405,14 +1536,21 @@ def normalize_keyword_token(token: str) -> str:
     if re.fullmatch(r"[가-힣]+", token):
         for pattern in KEYWORD_ENDING_PATTERNS:
             token = re.sub(pattern, "", token)
-        for suffix in KEYWORD_PARTICLE_SUFFIXES:
-            if token.endswith(suffix) and len(token) > len(suffix) + 1:
-                token = token[: -len(suffix)]
-                break
+        stripped = True
+        while stripped and token:
+            stripped = False
+            for suffix in KEYWORD_PARTICLE_SUFFIXES:
+                if token.endswith(suffix) and len(token) > len(suffix) + 1:
+                    token = token[: -len(suffix)]
+                    stripped = True
+                    break
 
     token = token.strip()
     if len(token) < 2:
         return ""
+    for pattern in KEYWORD_NOISE_PATTERNS:
+        if re.fullmatch(pattern, token):
+            return ""
     if token in KEYWORD_HARD_FILTERS:
         return ""
     return token
