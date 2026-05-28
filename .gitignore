@@ -25,6 +25,7 @@ outputs/tables/*
 !outputs/tables/topic_video_assignments.csv
 !outputs/tables/topic_summary_script.csv
 !outputs/tables/topic_video_assignments_script.csv
+!outputs/tables/channel_script_keyword_summary.csv
 !outputs/tables/channel_frame_distribution.csv
 !outputs/tables/channel_audience_reaction_distribution.csv
 !outputs/tables/audience_video_reaction_summary.csv

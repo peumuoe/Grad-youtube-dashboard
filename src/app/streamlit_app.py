@@ -179,10 +179,14 @@ DATA_FILE_NAMES = (
     "topic_video_assignments.csv",
     "topic_summary_script.csv",
     "topic_video_assignments_script.csv",
+    "channel_script_keyword_summary.csv",
     "channel_frame_distribution.csv",
     "channel_audience_reaction_distribution.csv",
     "audience_video_reaction_summary.csv",
 )
+
+SCRIPT_TOPIC_VIDEO_FILE = "topic_video_assignments_script.csv"
+SCRIPT_KEYWORD_SUMMARY_FILE = "channel_script_keyword_summary.csv"
 
 
 def get_data_version_key() -> tuple[int, ...]:
@@ -967,6 +971,11 @@ def build_topic_name_map(topic_summary_df: pd.DataFrame) -> dict[str, str]:
         "dc",
         "di",
     }
+
+
+def get_table_mtime_ns(name: str) -> int:
+    path = TABLE_DIR / name
+    return path.stat().st_mtime_ns if path.exists() else 0
     topic_name_map: dict[str, str] = {}
     for row in topic_summary_df.itertuples(index=False):
         label = str(getattr(row, "topic_label", ""))
@@ -2010,7 +2019,7 @@ def build_script_keyword_treemap_markup(topic_video_df: pd.DataFrame) -> str:
     return _build_keyword_treemap_markup(chart_df, "#DBEAFE", "#1D4ED8")
 
 
-def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
+def _extract_script_keyword_rows(topic_video_df: pd.DataFrame, limit: int = 15) -> list[dict[str, float]]:
     fallback_columns = (
         "topic_text_cleaned",
         "topic_text",
@@ -2027,12 +2036,53 @@ def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
         if candidate_series.str.strip().ne("").any():
             text_series = candidate_series
             break
-
     if text_series.empty:
-        return go.Figure()
-
+        return []
     token_counter = extract_keyword_counter(text_series.apply(strip_boilerplate))
-    keyword_rows = [{"keyword": word, "count": count} for word, count in token_counter.most_common(12)]
+    return [{"keyword": word, "count": count} for word, count in token_counter.most_common(limit)]
+
+
+@st.cache_data(show_spinner=False)
+def get_cached_script_keyword_rows(channel_name: str, file_mtime_ns: int) -> list[dict[str, float]]:
+    topic_video_script_df = normalize_channel_column(load_csv(SCRIPT_TOPIC_VIDEO_FILE))
+    filtered_df = filter_df(topic_video_script_df, channel_name)
+    return _extract_script_keyword_rows(filtered_df, limit=15)
+
+
+def get_precomputed_script_keyword_rows(channel_name: str) -> list[dict[str, float]]:
+    summary_df = normalize_channel_column(load_csv(SCRIPT_KEYWORD_SUMMARY_FILE))
+    if summary_df.empty or "channel_name" not in summary_df.columns:
+        return []
+
+    filtered_df = filter_df(summary_df, channel_name)
+    if filtered_df.empty or "keyword" not in filtered_df.columns or "count" not in filtered_df.columns:
+        return []
+
+    chart_df = (
+        filtered_df[["keyword", "count"]]
+        .dropna(subset=["keyword"])
+        .copy()
+    )
+    if chart_df.empty:
+        return []
+
+    chart_df["count"] = pd.to_numeric(chart_df["count"], errors="coerce").fillna(0)
+    chart_df = chart_df[chart_df["count"] > 0].sort_values("count", ascending=False).head(15)
+    return chart_df.to_dict("records")
+
+
+def build_script_keyword_treemap_markup_cached(channel_name: str) -> str:
+    keyword_rows = get_precomputed_script_keyword_rows(channel_name)
+    if not keyword_rows:
+        keyword_rows = get_cached_script_keyword_rows(channel_name, get_table_mtime_ns(SCRIPT_TOPIC_VIDEO_FILE))
+    if not keyword_rows:
+        return ""
+    chart_df = pd.DataFrame(keyword_rows).sort_values("count", ascending=False).copy()
+    return _build_keyword_treemap_markup(chart_df, "#DBEAFE", "#1D4ED8")
+
+
+def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
+    keyword_rows = _extract_script_keyword_rows(topic_video_df, limit=12)
     if not keyword_rows:
         return go.Figure()
 
@@ -2223,7 +2273,7 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
             "영상 본문 스크립트에서 반복해서 많이 등장한 표현입니다.",
             "제목·설명 문구가 아니라 실제 스크립트 본문에서 나온 단어 빈도를 집계한 결과입니다.",
         )
-        script_keyword_markup = build_script_keyword_treemap_markup(topic_video_script_df)
+        script_keyword_markup = build_script_keyword_treemap_markup_cached(channel)
         script_keyword_fig = build_script_keyword_bar_chart(topic_video_script_df)
         if render_treemap_component(script_keyword_markup):
             pass
