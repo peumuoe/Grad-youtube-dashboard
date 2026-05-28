@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+import streamlit.components.v1 as components
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -1322,10 +1323,16 @@ def build_topic_bar(topic_video_df: pd.DataFrame, topic_name_map: dict[str, str]
         topic_video_df.groupby("topic_label", as_index=False)
         .agg(video_count=("video_id", "count"))
         .sort_values("video_count", ascending=False)
-        .head(5)
         .copy()
     )
     chart_df["topic_name"] = chart_df["topic_label"].apply(lambda label: get_topic_display_name(topic_name_map, str(label)))
+    chart_df = (
+        chart_df.groupby("topic_name", as_index=False)
+        .agg(video_count=("video_count", "sum"))
+        .sort_values("video_count", ascending=False)
+        .head(5)
+        .copy()
+    )
     chart_df = chart_df.sort_values("video_count", ascending=True).copy()
     fig = go.Figure(
         go.Bar(
@@ -1341,7 +1348,7 @@ def build_topic_bar(topic_video_df: pd.DataFrame, topic_name_map: dict[str, str]
         )
     )
     fig.update_layout(
-        height=300,
+        height=max(300, 60 * len(chart_df) + 40),
         margin=dict(l=160, r=20, t=8, b=18),
         xaxis_title="영상 수",
         yaxis_title="",
@@ -1767,6 +1774,61 @@ def _build_keyword_treemap_markup(
     return "".join(html_parts)
 
 
+def render_treemap_component(markup: str, height: int = 352) -> bool:
+    if not markup:
+        return False
+    html_doc = f"""
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          body {{
+            margin: 0;
+            background: transparent;
+            font-family: "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+          }}
+          .tree-canvas {{
+            position: relative;
+            width: 100%;
+            height: 340px;
+            background: #ffffff;
+            border-radius: 18px;
+            overflow: hidden;
+            padding: 4px;
+            box-sizing: border-box;
+          }}
+          .tree-node {{
+            position: absolute;
+            border-radius: 12px;
+            outline: 3px solid #ffffff;
+            padding: 10px 10px 8px 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+          }}
+          .tree-label {{
+            color: #0f172a;
+            font-size: 0.92rem;
+            font-weight: 850;
+            line-height: 1.15;
+            word-break: keep-all;
+          }}
+          .tree-share {{
+            color: rgba(15,23,42,0.82);
+            font-size: 0.82rem;
+            font-weight: 750;
+          }}
+        </style>
+      </head>
+      <body>{markup}</body>
+    </html>
+    """
+    components.html(html_doc, height=height, scrolling=False)
+    return True
+
+
 def build_keyword_bar(topic_video_df: pd.DataFrame) -> go.Figure:
     text_series = (
         topic_video_df.get("topic_text_cleaned", pd.Series(dtype=str))
@@ -1852,10 +1914,16 @@ def build_script_topic_bar(topic_video_df: pd.DataFrame, topic_name_map: dict[st
         topic_video_df.groupby("topic_label", as_index=False)
         .agg(video_count=("video_id", "count"))
         .sort_values("video_count", ascending=False)
-        .head(5)
         .copy()
     )
     chart_df["topic_name"] = chart_df["topic_label"].apply(lambda label: get_topic_display_name(topic_name_map, str(label)))
+    chart_df = (
+        chart_df.groupby("topic_name", as_index=False)
+        .agg(video_count=("video_count", "sum"))
+        .sort_values("video_count", ascending=False)
+        .head(5)
+        .copy()
+    )
     chart_df = chart_df.sort_values("video_count", ascending=True).copy()
     fig = go.Figure(
         go.Bar(
@@ -1871,7 +1939,7 @@ def build_script_topic_bar(topic_video_df: pd.DataFrame, topic_name_map: dict[st
         )
     )
     fig.update_layout(
-        height=300,
+        height=max(300, 60 * len(chart_df) + 40),
         margin=dict(l=160, r=20, t=8, b=18),
         xaxis_title="?? ?",
         yaxis_title="",
@@ -2109,7 +2177,7 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
         if topic_video_df.empty:
             st.warning("단어 분석 데이터가 없습니다.")
         else:
-            st.markdown(build_keyword_treemap_markup(topic_video_df), unsafe_allow_html=True)
+            render_treemap_component(build_keyword_treemap_markup(topic_video_df))
 
     with extra_right:
         section_header(
@@ -2157,8 +2225,8 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
         )
         script_keyword_markup = build_script_keyword_treemap_markup(topic_video_script_df)
         script_keyword_fig = build_script_keyword_bar_chart(topic_video_script_df)
-        if script_keyword_markup:
-            st.markdown(script_keyword_markup, unsafe_allow_html=True)
+        if render_treemap_component(script_keyword_markup):
+            pass
         else:
             if script_keyword_fig.data:
                 st.plotly_chart(script_keyword_fig, use_container_width=True)
