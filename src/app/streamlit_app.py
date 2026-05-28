@@ -172,6 +172,26 @@ def load_csv(name: str) -> pd.DataFrame:
     return _load_csv_cached(name, stat.st_mtime_ns)
 
 
+DATA_FILE_NAMES = (
+    "channel_analysis_summary.csv",
+    "topic_summary.csv",
+    "topic_video_assignments.csv",
+    "topic_summary_script.csv",
+    "topic_video_assignments_script.csv",
+    "channel_frame_distribution.csv",
+    "channel_audience_reaction_distribution.csv",
+    "audience_video_reaction_summary.csv",
+)
+
+
+def get_data_version_key() -> tuple[int, ...]:
+    version_bits: list[int] = []
+    for name in DATA_FILE_NAMES:
+        path = TABLE_DIR / name
+        version_bits.append(path.stat().st_mtime_ns if path.exists() else 0)
+    return tuple(version_bits)
+
+
 def normalize_channel_name(value: object) -> str:
     if value is None:
         return ""
@@ -196,7 +216,7 @@ def normalize_channel_column(df: pd.DataFrame) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_data() -> dict[str, pd.DataFrame]:
+def load_data(_version_key: tuple[int, ...]) -> dict[str, pd.DataFrame]:
     return {
         "summary": normalize_channel_column(load_csv("channel_analysis_summary.csv")),
         "topic_summary": load_csv("topic_summary.csv"),
@@ -1893,12 +1913,11 @@ def build_script_keyword_bar(topic_video_df: pd.DataFrame) -> go.Figure:
 
 
 def build_script_keyword_treemap_markup(topic_video_df: pd.DataFrame) -> str:
-    text_series = (
-        topic_video_df.get("topic_text_cleaned", pd.Series(dtype=str))
-        .fillna("")
-        .astype(str)
-        .apply(strip_boilerplate)
-    )
+    cleaned_series = topic_video_df.get("topic_text_cleaned", pd.Series(dtype=str))
+    cleaned_series = cleaned_series.fillna("").astype(str)
+    if cleaned_series.str.strip().eq("").all():
+        cleaned_series = topic_video_df.get("best_transcript_text", pd.Series(dtype=str)).fillna("").astype(str)
+    text_series = cleaned_series.apply(strip_boilerplate)
     token_counter = extract_keyword_counter(text_series)
 
     keyword_rows = [{"keyword": word, "count": count} for word, count in token_counter.most_common(15)]
@@ -2063,7 +2082,7 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
 
 def main() -> None:
     apply_page_style()
-    data = load_data()
+    data = load_data(get_data_version_key())
     render_header()
     selected_channel = render_sidebar(data["summary"])
     if not selected_channel:
