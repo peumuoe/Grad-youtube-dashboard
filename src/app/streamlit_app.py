@@ -929,6 +929,22 @@ def build_topic_name_map(topic_summary_df: pd.DataFrame) -> dict[str, str]:
         "여기",
         "봤을",
         "되고",
+        "다른",
+        "하지",
+        "정부",
+        "겁니다",
+        "러시아",
+        "여러",
+        "해야",
+        "통해서",
+        "때는",
+        "무슨",
+        "이건",
+        "한번",
+        "as",
+        "cbs",
+        "dc",
+        "di",
     }
     topic_name_map: dict[str, str] = {}
     for row in topic_summary_df.itertuples(index=False):
