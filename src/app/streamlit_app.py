@@ -972,10 +972,6 @@ def build_topic_name_map(topic_summary_df: pd.DataFrame) -> dict[str, str]:
         "di",
     }
 
-
-def get_table_mtime_ns(name: str) -> int:
-    path = TABLE_DIR / name
-    return path.stat().st_mtime_ns if path.exists() else 0
     topic_name_map: dict[str, str] = {}
     for row in topic_summary_df.itertuples(index=False):
         label = str(getattr(row, "topic_label", ""))
@@ -1013,6 +1009,11 @@ def get_table_mtime_ns(name: str) -> int:
 
         topic_name_map[label] = topic_name
     return topic_name_map
+
+
+def get_table_mtime_ns(name: str) -> int:
+    path = TABLE_DIR / name
+    return path.stat().st_mtime_ns if path.exists() else 0
 
 
 def get_topic_display_name(topic_name_map: dict[str, str], label: str) -> str:
