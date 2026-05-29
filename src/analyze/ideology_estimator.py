@@ -26,13 +26,10 @@ PROGRESSIVE_CUES = [
 
 CONSERVATIVE_CUES = [
     "응징",
-    "보복",
     "강경 대응",
-    "정밀 타격",
     "선제 타격",
     "선제공격",
     "제재 강화",
-    "정권 교체",
     "완전 제거",
     "무력 대응",
     "압도적 대응",
@@ -45,11 +42,11 @@ CONSERVATIVE_CUES = [
 # whether this issue corpus is framed relatively more hawkish or more
 # diplomatic/humanitarian than the overall corpus average.
 FRAME_TILT_WEIGHTS = {
-    "안보·군사": 0.4,
-    "국제정치·외교": -0.3,
+    "안보·군사": 0.2,
+    "국제정치·외교": -0.15,
     "경제·에너지": 0.0,
     "투자·시장": 0.0,
-    "인도주의·민간피해": -0.4,
+    "인도주의·민간피해": -0.2,
     "기타/혼합": 0.0,
 }
 
@@ -60,7 +57,7 @@ def count_hits(text: str, keywords: list[str]) -> int:
     return sum(1 for keyword in keywords if keyword.lower() in lowered)
 
 
-def label_tilt(score: float, low_threshold: float = -0.12, high_threshold: float = 0.12) -> str:
+def label_tilt(score: float, low_threshold: float = -0.08, high_threshold: float = 0.08) -> str:
     """Map relative score into project ideology labels."""
     if score <= low_threshold:
         return "진보적 기울기"
@@ -124,7 +121,7 @@ def estimate_ideology_tilt(frame_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Dat
     # value-laden cues carry more weight. This reduces researcher-imposed
     # interpretation from mapping whole frames directly onto a left/right axis.
     video_df["ideology_relative_score"] = (
-        0.30 * video_df["frame_score_adjusted"] + 0.70 * video_df["cue_score_adjusted"]
+        0.10 * video_df["frame_score_adjusted"] + 0.90 * video_df["cue_score_adjusted"]
     )
     video_df["ideology_relative_label"] = video_df["ideology_relative_score"].apply(label_tilt)
 
