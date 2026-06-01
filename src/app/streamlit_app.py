@@ -1023,6 +1023,107 @@ def get_topic_display_name(topic_name_map: dict[str, str], label: str) -> str:
     return "기타/혼합 주제" if mapped in TOPIC_NOISE_TERMS else mapped
 
 
+def classify_direction_display(score: float) -> str:
+    if score >= 0.015:
+        return "중간이지만 강경 안보 쪽에 더 가까움"
+    if score >= 0.005:
+        return "강경 안보 쪽으로 약간 기울어짐"
+    if score <= -0.015:
+        return "중간이지만 외교·인도주의 쪽에 더 가까움"
+    if score <= -0.005:
+        return "외교·인도주의 쪽으로 약간 기울어짐"
+    return "중간에 매우 가까움"
+
+
+def direction_explainer_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "중간이지만 강경 안보 쪽에 더 가까움":
+        return "강경 안보 표현과 안보·군사 프레임이 상대적으로 조금 더 자주 나타났습니다."
+    if direction == "강경 안보 쪽으로 약간 기울어짐":
+        return "전체적으로는 중간 범위에 있지만, 강경 안보 표현이 약간 더 두드러집니다."
+    if direction == "중간이지만 외교·인도주의 쪽에 더 가까움":
+        return "외교·완화·민간 피해 관련 표현이 상대적으로 조금 더 자주 나타났습니다."
+    if direction == "외교·인도주의 쪽으로 약간 기울어짐":
+        return "전체적으로는 중간 범위에 있지만, 외교·인도주의 관련 표현이 약간 더 두드러집니다."
+    return "한쪽으로 뚜렷하게 치우치지 않고 여러 방향의 표현이 함께 나타났습니다."
+
+
+def direction_short_caption_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "중간이지만 강경 안보 쪽에 더 가까움":
+        return "중간 범위 안에서 강경 안보 쪽으로 조금 더 가까운 편입니다."
+    if direction == "강경 안보 쪽으로 약간 기울어짐":
+        return "강경 안보 관련 표현이 약간 더 자주 보입니다."
+    if direction == "중간이지만 외교·인도주의 쪽에 더 가까움":
+        return "중간 범위 안에서 외교·인도주의 쪽으로 조금 더 가까운 편입니다."
+    if direction == "외교·인도주의 쪽으로 약간 기울어짐":
+        return "외교·인도주의 관련 표현이 약간 더 자주 보입니다."
+    return "한쪽으로 뚜렷하게 기울지 않은 중간권 표현이 나타납니다."
+
+
+def direction_pill_html_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "중간이지만 강경 안보 쪽에 더 가까움":
+        return '<div class="direction-pill conservative">현재 읽기: 중간권이지만 강경 안보 쪽에 조금 더 가까움</div>'
+    if direction == "강경 안보 쪽으로 약간 기울어짐":
+        return '<div class="direction-pill conservative">현재 읽기: 강경 안보 쪽으로 약간 기울어짐</div>'
+    if direction == "중간이지만 외교·인도주의 쪽에 더 가까움":
+        return '<div class="direction-pill progressive">현재 읽기: 중간권이지만 외교·인도주의 쪽에 조금 더 가까움</div>'
+    if direction == "외교·인도주의 쪽으로 약간 기울어짐":
+        return '<div class="direction-pill progressive">현재 읽기: 외교·인도주의 쪽으로 약간 기울어짐</div>'
+    return '<div class="direction-pill neutral">현재 읽기: 중간에 매우 가까움</div>'
+
+
+def build_direction_markup_display(score: float) -> str:
+    clamped_score = max(-1.0, min(1.0, float(score)))
+    marker_left = ((clamped_score + 1.0) / 2.0) * 100.0
+    direction = classify_direction_display(clamped_score)
+    if direction in {"중간이지만 강경 안보 쪽에 더 가까움", "강경 안보 쪽으로 약간 기울어짐"}:
+        marker_text = (
+            "강경 안보 쪽에 조금 더 가까움"
+            if direction == "중간이지만 강경 안보 쪽에 더 가까움"
+            else "강경 안보 쪽으로 약간 기울어짐"
+        )
+        bubble_bg = "#E11D48"
+    elif direction in {"중간이지만 외교·인도주의 쪽에 더 가까움", "외교·인도주의 쪽으로 약간 기울어짐"}:
+        marker_text = (
+            "외교·인도주의 쪽에 조금 더 가까움"
+            if direction == "중간이지만 외교·인도주의 쪽에 더 가까움"
+            else "외교·인도주의 쪽으로 약간 기울어짐"
+        )
+        bubble_bg = "#4338CA"
+    else:
+        marker_text = "중간에 매우 가까움"
+        bubble_bg = "#475569"
+
+    return f"""
+    <div class="direction-panel">
+        {direction_pill_html_display(clamped_score)}
+        <div class="direction-scale-top">
+            <span class="left">외교·인도주의</span>
+            <span class="center">중간</span>
+            <span class="right">강경 안보</span>
+        </div>
+        <div class="direction-bar-wrap">
+            <div class="direction-marker" style="left: {marker_left:.1f}%;">
+                <div class="direction-marker-bubble" style="background:{bubble_bg};">{marker_text}</div>
+                <div class="direction-marker-stem" style="background:{bubble_bg};"></div>
+            </div>
+            <div class="direction-bar"></div>
+            <div class="direction-center-line"></div>
+        </div>
+        <div class="direction-scale-bottom">
+            <span>외교·인도주의</span>
+            <span>중간</span>
+            <span>강경 안보</span>
+        </div>
+        <div class="direction-summary">
+            현재 점수는 <b>{clamped_score:.3f}</b>이며, {direction_explainer_display(clamped_score)}
+        </div>
+    </div>
+    """
+
+
 def classify_direction(score: float) -> str:
     if score >= 0.15:
         return "보수적 기울기"
@@ -1094,6 +1195,107 @@ def build_direction_markup(score: float) -> str:
         </div>
         <div class="direction-summary">
             현재 점수는 <b>{clamped_score:.3f}</b>이며, {direction_explainer(clamped_score)}
+        </div>
+    </div>
+    """
+
+
+def classify_direction_display(score: float) -> str:
+    if score >= 0.015:
+        return "중간이지만 보수 쪽에 더 가까움"
+    if score >= 0.005:
+        return "보수 쪽으로 약간 기울어짐"
+    if score <= -0.015:
+        return "중간이지만 진보 쪽에 더 가까움"
+    if score <= -0.005:
+        return "진보 쪽으로 약간 기울어짐"
+    return "중간에 매우 가까움"
+
+
+def direction_explainer_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "중간이지만 보수 쪽에 더 가까움":
+        return "전체적으로는 중간 범위지만, 보수 쪽 표현이 상대적으로 조금 더 자주 나타났습니다."
+    if direction == "보수 쪽으로 약간 기울어짐":
+        return "중간권 안에 있으나 보수 쪽 표현이 약간 더 두드러집니다."
+    if direction == "중간이지만 진보 쪽에 더 가까움":
+        return "전체적으로는 중간 범위지만, 진보 쪽 표현이 상대적으로 조금 더 자주 나타났습니다."
+    if direction == "진보 쪽으로 약간 기울어짐":
+        return "중간권 안에 있으나 진보 쪽 표현이 약간 더 두드러집니다."
+    return "한쪽으로 뚜렷하게 치우치지 않고 여러 방향의 표현이 함께 나타났습니다."
+
+
+def direction_short_caption_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "중간이지만 보수 쪽에 더 가까움":
+        return "중간 범위 안에서 보수 쪽으로 조금 더 가까운 편입니다."
+    if direction == "보수 쪽으로 약간 기울어짐":
+        return "보수 쪽 표현이 약간 더 자주 보입니다."
+    if direction == "중간이지만 진보 쪽에 더 가까움":
+        return "중간 범위 안에서 진보 쪽으로 조금 더 가까운 편입니다."
+    if direction == "진보 쪽으로 약간 기울어짐":
+        return "진보 쪽 표현이 약간 더 자주 보입니다."
+    return "한쪽으로 뚜렷하게 기울지 않은 중간권 표현이 나타납니다."
+
+
+def direction_pill_html_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "중간이지만 보수 쪽에 더 가까움":
+        return '<div class="direction-pill conservative">현재 읽기: 중간권이지만 보수 쪽에 조금 더 가까움</div>'
+    if direction == "보수 쪽으로 약간 기울어짐":
+        return '<div class="direction-pill conservative">현재 읽기: 보수 쪽으로 약간 기울어짐</div>'
+    if direction == "중간이지만 진보 쪽에 더 가까움":
+        return '<div class="direction-pill progressive">현재 읽기: 중간권이지만 진보 쪽에 조금 더 가까움</div>'
+    if direction == "진보 쪽으로 약간 기울어짐":
+        return '<div class="direction-pill progressive">현재 읽기: 진보 쪽으로 약간 기울어짐</div>'
+    return '<div class="direction-pill neutral">현재 읽기: 중간에 매우 가까움</div>'
+
+
+def build_direction_markup_display(score: float) -> str:
+    clamped_score = max(-1.0, min(1.0, float(score)))
+    marker_left = ((clamped_score + 1.0) / 2.0) * 100.0
+    direction = classify_direction_display(clamped_score)
+    if direction in {"중간이지만 보수 쪽에 더 가까움", "보수 쪽으로 약간 기울어짐"}:
+        marker_text = (
+            "보수 쪽에 조금 더 가까움"
+            if direction == "중간이지만 보수 쪽에 더 가까움"
+            else "보수 쪽으로 약간 기울어짐"
+        )
+        bubble_bg = "#E11D48"
+    elif direction in {"중간이지만 진보 쪽에 더 가까움", "진보 쪽으로 약간 기울어짐"}:
+        marker_text = (
+            "진보 쪽에 조금 더 가까움"
+            if direction == "중간이지만 진보 쪽에 더 가까움"
+            else "진보 쪽으로 약간 기울어짐"
+        )
+        bubble_bg = "#4338CA"
+    else:
+        marker_text = "중간에 매우 가까움"
+        bubble_bg = "#475569"
+
+    return f"""
+    <div class="direction-panel">
+        {direction_pill_html_display(clamped_score)}
+        <div class="direction-scale-top">
+            <span class="left">진보 쪽</span>
+            <span class="center">중간</span>
+            <span class="right">보수 쪽</span>
+        </div>
+        <div class="direction-bar-wrap">
+            <div class="direction-marker" style="left: {marker_left:.1f}%;">
+                <div class="direction-marker-bubble" style="background:{bubble_bg};">{marker_text}</div>
+                <div class="direction-marker-stem" style="background:{bubble_bg};"></div>
+            </div>
+            <div class="direction-bar"></div>
+            <div class="direction-center-line"></div>
+        </div>
+        <div class="direction-scale-bottom">
+            <span>진보</span>
+            <span>중간</span>
+            <span>보수</span>
+        </div>
+        <div class="direction-summary">
+            현재 점수는 <b>{clamped_score:.3f}</b>이며, {direction_explainer_display(clamped_score)}
         </div>
     </div>
     """
@@ -1211,7 +1413,7 @@ def build_channel_summary_text(channel_row: pd.Series, topic_name_map: dict[str,
     dominant_frame = str(channel_row.get("dominant_frame", "??/??"))
     dominant_topic = get_topic_display_name(topic_name_map, str(channel_row.get("dominant_topic", "")))
     dominant_reaction = str(channel_row.get("dominant_audience_reaction", "??/??"))
-    direction = classify_direction(float(channel_row.get("ideology_relative_score", 0.0)))
+    direction = classify_direction_display(float(channel_row.get("ideology_relative_score", 0.0)))
     return (
         f"? ë¶ìí  ì±ë ë¶ìí  ì±ë {dominant_frame} ?ë¶ìí  ì±ë?, "
         f"?? {dominant_topic} ë¶ìí  ì±ë ????. "
@@ -2165,8 +2367,8 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
     metric_card(
         col4,
         "해석 방향",
-        classify_direction(float(channel_row.get("ideology_relative_score", 0.0))),
-        direction_explainer(float(channel_row.get("ideology_relative_score", 0.0))),
+        classify_direction_display(float(channel_row.get("ideology_relative_score", 0.0))),
+        direction_explainer_display(float(channel_row.get("ideology_relative_score", 0.0))),
     )
 
     st.markdown("")
@@ -2175,10 +2377,10 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
     with top_left:
         section_header(
             "해석 방향",
-            direction_short_caption(float(channel_row.get("ideology_relative_score", 0.0))),
+            direction_short_caption_display(float(channel_row.get("ideology_relative_score", 0.0))),
             "이 점수는 채널의 본질적 정치 성향을 판정하는 값이 아니라, 이란 전쟁 이슈를 다룰 때 상대적으로 어떤 표현과 관점이 더 자주 등장했는지 보여주는 참고 지표입니다.",
         )
-        st.markdown(build_direction_markup(float(channel_row.get("ideology_relative_score", 0.0))), unsafe_allow_html=True)
+        st.markdown(build_direction_markup_display(float(channel_row.get("ideology_relative_score", 0.0))), unsafe_allow_html=True)
 
     with top_right:
         section_header(
