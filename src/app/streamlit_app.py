@@ -2327,6 +2327,107 @@ def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def classify_direction_display(score: float) -> str:
+    if score >= 0.018:
+        return "보수 쪽으로 기울어짐"
+    if score >= 0.006:
+        return "중간이지만 보수 쪽에 더 가까움"
+    if score <= -0.018:
+        return "진보 쪽으로 기울어짐"
+    if score <= -0.006:
+        return "중간이지만 진보 쪽에 더 가까움"
+    return "중간에 매우 가까움"
+
+
+def direction_explainer_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "보수 쪽으로 기울어짐":
+        return "이란 전쟁 관련 보도에서 보수 쪽 표현과 프레임이 상대적으로 더 강하게 나타났습니다."
+    if direction == "중간이지만 보수 쪽에 더 가까움":
+        return "전체적으로는 중간 범위 안에 있지만 보수 쪽 표현이 조금 더 자주 나타났습니다."
+    if direction == "진보 쪽으로 기울어짐":
+        return "이란 전쟁 관련 보도에서 진보 쪽 표현과 프레임이 상대적으로 더 강하게 나타났습니다."
+    if direction == "중간이지만 진보 쪽에 더 가까움":
+        return "전체적으로는 중간 범위 안에 있지만 진보 쪽 표현이 조금 더 자주 나타났습니다."
+    return "한쪽으로 뚜렷하게 치우치지 않고 여러 방향의 표현이 함께 나타났습니다."
+
+
+def direction_short_caption_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "보수 쪽으로 기울어짐":
+        return "보수 쪽 표현이 상대적으로 더 자주 보입니다."
+    if direction == "중간이지만 보수 쪽에 더 가까움":
+        return "중간 범위 안에서 보수 쪽에 조금 더 가깝습니다."
+    if direction == "진보 쪽으로 기울어짐":
+        return "진보 쪽 표현이 상대적으로 더 자주 보입니다."
+    if direction == "중간이지만 진보 쪽에 더 가까움":
+        return "중간 범위 안에서 진보 쪽에 조금 더 가깝습니다."
+    return "한쪽으로 뚜렷하게 기울지 않은 중간권 표현입니다."
+
+
+def direction_pill_html_display(score: float) -> str:
+    direction = classify_direction_display(score)
+    if direction == "보수 쪽으로 기울어짐":
+        return '<div class="direction-pill conservative">현재 읽기: 보수 쪽으로 기울어짐</div>'
+    if direction == "중간이지만 보수 쪽에 더 가까움":
+        return '<div class="direction-pill conservative">현재 읽기: 중간권이지만 보수 쪽에 조금 더 가까움</div>'
+    if direction == "진보 쪽으로 기울어짐":
+        return '<div class="direction-pill progressive">현재 읽기: 진보 쪽으로 기울어짐</div>'
+    if direction == "중간이지만 진보 쪽에 더 가까움":
+        return '<div class="direction-pill progressive">현재 읽기: 중간권이지만 진보 쪽에 조금 더 가까움</div>'
+    return '<div class="direction-pill neutral">현재 읽기: 중간에 매우 가까움</div>'
+
+
+def build_direction_markup_display(score: float) -> str:
+    clamped_score = max(-1.0, min(1.0, float(score)))
+    marker_left = ((clamped_score + 1.0) / 2.0) * 100.0
+    direction = classify_direction_display(clamped_score)
+    if direction in {"중간이지만 보수 쪽에 더 가까움", "보수 쪽으로 기울어짐"}:
+        marker_text = (
+            "보수 쪽에 조금 더 가까움"
+            if direction == "중간이지만 보수 쪽에 더 가까움"
+            else "보수 쪽으로 기울어짐"
+        )
+        bubble_bg = "#E11D48"
+    elif direction in {"중간이지만 진보 쪽에 더 가까움", "진보 쪽으로 기울어짐"}:
+        marker_text = (
+            "진보 쪽에 조금 더 가까움"
+            if direction == "중간이지만 진보 쪽에 더 가까움"
+            else "진보 쪽으로 기울어짐"
+        )
+        bubble_bg = "#4338CA"
+    else:
+        marker_text = "중간에 매우 가까움"
+        bubble_bg = "#475569"
+
+    return f"""
+    <div class="direction-panel">
+        {direction_pill_html_display(clamped_score)}
+        <div class="direction-scale-top">
+            <span class="left">진보 쪽</span>
+            <span class="center">중간</span>
+            <span class="right">보수 쪽</span>
+        </div>
+        <div class="direction-bar-wrap">
+            <div class="direction-marker" style="left: {marker_left:.1f}%;">
+                <div class="direction-marker-bubble" style="background:{bubble_bg};">{marker_text}</div>
+                <div class="direction-marker-stem" style="background:{bubble_bg};"></div>
+            </div>
+            <div class="direction-bar"></div>
+            <div class="direction-center-line"></div>
+        </div>
+        <div class="direction-scale-bottom">
+            <span>진보</span>
+            <span>중간</span>
+            <span>보수</span>
+        </div>
+        <div class="direction-summary">
+            현재 점수는 <b>{clamped_score:.3f}</b>이며, {direction_explainer_display(clamped_score)}
+        </div>
+    </div>
+    """
+
+
 def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
     summary_df = filter_df(data["summary"], channel)
     topic_video_df = filter_df(data["topic_video"], channel)
