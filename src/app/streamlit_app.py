@@ -329,6 +329,8 @@ def apply_page_style() -> None:
             font-size: 1.55rem;
             font-weight: 850;
             line-height: 1.15;
+            word-break: keep-all;
+            overflow-wrap: normal;
         }
         .kpi-sub {
             color: #475569;
@@ -725,13 +727,25 @@ def apply_page_style() -> None:
     )
 
 
+def format_kpi_value(label: str, value: str) -> str:
+    text = str(value)
+    replacements = {
+        "진보 쪽으로 기울어짐": "진보 쪽으로<br>기울어짐",
+        "보수 쪽으로 기울어짐": "보수 쪽으로<br>기울어짐",
+        "중간이지만 진보 쪽에 더 가까움": "중간이지만<br>진보 쪽에 가까움",
+        "중간이지만 보수 쪽에 더 가까움": "중간이지만<br>보수 쪽에 가까움",
+    }
+    return replacements.get(text, text)
+
+
 def metric_card(column, label: str, value: str, sub: str) -> None:
+    value_html = format_kpi_value(label, value)
     with column:
         st.markdown(
             f"""
             <div class="kpi-card">
                 <div class="kpi-label">{label}</div>
-                <div class="kpi-value">{value}</div>
+                <div class="kpi-value">{value_html}</div>
             </div>
             """,
             unsafe_allow_html=True,
