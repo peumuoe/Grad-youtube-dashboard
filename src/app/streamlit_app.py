@@ -595,6 +595,10 @@ def apply_page_style() -> None:
             font-weight: 850;
             white-space: nowrap;
         }
+        .compare-pill.remove {
+            background: rgba(225,29,72,0.10);
+            color: #be123c;
+        }
         .compare-board {
             background: rgba(255,255,255,0.96);
             border: 1px solid rgba(226,232,240,0.92);
@@ -602,6 +606,7 @@ def apply_page_style() -> None:
             padding: 16px 18px 12px 18px;
             box-shadow: 0 12px 26px rgba(15,23,42,0.05);
             margin-bottom: 1rem;
+            overflow-x: auto;
         }
         .compare-table {
             width: 100%;
@@ -644,6 +649,22 @@ def apply_page_style() -> None:
             height: 30px;
             border-radius: 10px;
             flex: 0 0 auto;
+        }
+        .compare-pending {
+            background: rgba(255,255,255,0.92);
+            border: 1px dashed rgba(20,184,166,0.36);
+            border-radius: 24px;
+            padding: 34px 28px;
+            text-align: center;
+            color: #475569;
+            box-shadow: 0 12px 28px rgba(15,23,42,0.04);
+            margin-top: 0.7rem;
+        }
+        .compare-pending-title {
+            color: #0f172a;
+            font-size: 1.16rem;
+            font-weight: 880;
+            margin-bottom: 0.45rem;
         }
         .group-head {
             display: flex;
@@ -1032,7 +1053,10 @@ def build_sidebar_channel_list_html(
             if channel not in compare_set:
                 next_selection.append(channel)
             href = compare_href(next_selection)
-            pill = f'<span class="compare-pill">{"담김" if channel in compare_set else "담기"}</span>'
+            if channel in compare_set:
+                pill = '<span class="compare-pill remove">빼기</span>'
+            else:
+                pill = '<span class="compare-pill">담기</span>'
         else:
             channel_param = quote(channel.strip())
             href = f"?selected_channel={channel_param}"
@@ -1089,6 +1113,8 @@ def build_compare_dropzone_html(selected_channels: list[str]) -> str:
     for _ in range(max(0, 2 - len(selected_channels))):
         parts.append('<div class="compare-slot empty">여기에 채널을 담아 비교</div>')
     parts.append("</div>")
+    if selected_channels:
+        parts.append('<a class="compare-clear-link" href="?" target="_self">비교 칸 초기화</a>')
     return "".join(parts)
 
 
@@ -1152,6 +1178,19 @@ def render_empty_state() -> None:
         <div class="empty-state">
             <div class="empty-title">채널을 먼저 선택해 주세요</div>
             <div>왼쪽에서 채널 하나를 고르면, 그 채널의 보도 특징과 시청자 반응이 한 화면에 정리됩니다.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_compare_pending_state(selected_channels: list[str]) -> None:
+    selected_name = display_channel_name(selected_channels[0]) if selected_channels else ""
+    st.markdown(
+        f"""
+        <div class="compare-pending">
+            <div class="compare-pending-title">비교할 채널을 하나 더 담아 주세요</div>
+            <div>현재 <b>{escape(selected_name)}</b> 채널이 비교 칸에 담겨 있습니다. 왼쪽 채널 카드에서 하나를 더 누르면 비교 화면이 열립니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1240,6 +1279,11 @@ def top_value(df: pd.DataFrame, label_col: str, value_col: str, fallback: str = 
     return str(ranked_df.iloc[0][label_col])
 
 
+def safe_int_value(value: object) -> int:
+    numeric_value = pd.to_numeric(pd.Series([value]), errors="coerce").fillna(0).iloc[0]
+    return int(float(numeric_value))
+
+
 def group_logo_stack_html(channels: list[str]) -> str:
     logo_parts: list[str] = []
     for channel in channels[:6]:
@@ -1279,10 +1323,48 @@ def render_group_header(channels: list[str]) -> None:
     )
 
 
+def get_channel_dominant_script_topic(
+    topic_video_script_df: pd.DataFrame,
+    channel: str,
+    topic_name_map_script: dict[str, str],
+) -> str:
+    channel_df = filter_df(topic_video_script_df, channel)
+    if channel_df.empty or "topic_label" not in channel_df.columns:
+        return "데이터 없음"
+    topic_label = channel_df.groupby("topic_label")["video_id"].count().sort_values(ascending=False).index[0]
+    return get_topic_display_name(topic_name_map_script, str(topic_label))
+
+
+def get_channel_top_title_keyword(topic_video_df: pd.DataFrame, channel: str) -> str:
+    channel_df = filter_df(topic_video_df, channel)
+    if channel_df.empty:
+        return "데이터 없음"
+    text_series = (
+        channel_df.get("topic_text_cleaned", pd.Series(dtype=str))
+        .fillna("")
+        .astype(str)
+        .apply(strip_boilerplate)
+    )
+    token_counter = extract_keyword_counter(text_series)
+    return token_counter.most_common(1)[0][0] if token_counter else "데이터 없음"
+
+
+def get_channel_top_script_keyword(channel: str, topic_video_script_df: pd.DataFrame) -> str:
+    keyword_rows = get_precomputed_script_keyword_rows(channel)
+    if not keyword_rows:
+        keyword_rows = _extract_script_keyword_rows(filter_df(topic_video_script_df, channel), limit=1)
+    if not keyword_rows:
+        return "데이터 없음"
+    return str(keyword_rows[0].get("keyword", "데이터 없음"))
+
+
 def build_compare_summary_table_html(
     summary_df: pd.DataFrame,
+    topic_video_df: pd.DataFrame,
+    topic_video_script_df: pd.DataFrame,
     channels: list[str],
     topic_name_map: dict[str, str],
+    topic_name_map_script: dict[str, str],
 ) -> str:
     rows: list[str] = []
     for channel in channels:
@@ -1294,15 +1376,23 @@ def build_compare_summary_table_html(
         topic = get_topic_display_name(topic_name_map, str(channel_row.get("dominant_topic", "")))
         reaction = str(channel_row.get("dominant_audience_reaction", "기타/혼합"))
         direction = classify_direction_display(float(channel_row.get("ideology_relative_score", 0.0)))
-        video_count = int(float(channel_row.get("video_count", 0) or 0))
+        video_count = safe_int_value(channel_row.get("video_count", 0))
+        comment_count = safe_int_value(channel_row.get("audience_comment_count", 0))
+        script_topic = get_channel_dominant_script_topic(topic_video_script_df, channel, topic_name_map_script)
+        title_keyword = get_channel_top_title_keyword(topic_video_df, channel)
+        script_keyword = get_channel_top_script_keyword(channel, topic_video_script_df)
         rows.append(
             "<tr>"
             f'<td><div class="compare-channel-cell">{sidebar_logo_html(channel)}<span>{escape(display_channel_name(channel))}</span></div></td>'
             f"<td>{escape(frame)}</td>"
             f"<td>{escape(topic)}</td>"
+            f"<td>{escape(script_topic)}</td>"
             f"<td>{escape(reaction)}</td>"
             f"<td>{direction}</td>"
+            f"<td>{escape(title_keyword)}</td>"
+            f"<td>{escape(script_keyword)}</td>"
             f"<td>{video_count:,}</td>"
+            f"<td>{comment_count:,}</td>"
             "</tr>"
         )
     if not rows:
@@ -1310,7 +1400,7 @@ def build_compare_summary_table_html(
     return (
         '<div class="compare-board">'
         '<table class="compare-table">'
-        "<thead><tr><th>채널</th><th>보도 관점</th><th>대표 주제</th><th>댓글 반응</th><th>해석 방향</th><th>영상 수</th></tr></thead>"
+        "<thead><tr><th>채널</th><th>보도 관점</th><th>제목·설명 주제</th><th>스크립트 주제</th><th>댓글 반응</th><th>해석 방향</th><th>제목 핵심어</th><th>스크립트 핵심어</th><th>영상 수</th><th>댓글 수</th></tr></thead>"
         "<tbody>"
         + "".join(rows)
         + "</tbody></table></div>"
@@ -1448,6 +1538,48 @@ def build_compare_topic_bar(
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
         yaxis=dict(autorange="reversed", automargin=True),
+    )
+    return fig
+
+
+def build_compare_volume_timeline(topic_video_df: pd.DataFrame, channels: list[str]) -> go.Figure:
+    chart_df = topic_video_df[topic_video_df["channel_name"].isin(channels)].copy()
+    if chart_df.empty or "published_at" not in chart_df.columns:
+        return go.Figure()
+    chart_df["published_at"] = pd.to_datetime(chart_df["published_at"], errors="coerce")
+    chart_df = chart_df.dropna(subset=["published_at"]).copy()
+    if chart_df.empty:
+        return go.Figure()
+    chart_df["published_date"] = chart_df["published_at"].dt.date.astype(str)
+    daily_df = (
+        chart_df.groupby(["channel_name", "published_date"], as_index=False)
+        .agg(video_count=("video_id", "count"))
+        .sort_values("published_date")
+    )
+    fig = go.Figure()
+    palette = ["#3B82F6", "#14B8A6", "#F59E0B", "#8B5CF6", "#E11D48", "#64748B"]
+    for index, channel in enumerate(channels):
+        channel_df = daily_df[daily_df["channel_name"] == channel].copy()
+        fig.add_trace(
+            go.Scatter(
+                x=channel_df["published_date"],
+                y=channel_df["video_count"],
+                mode="lines+markers",
+                name=display_channel_name(channel),
+                line=dict(color=palette[index % len(palette)], width=3),
+                marker=dict(size=6),
+                hovertemplate="%{x}<br>%{y}개<extra>" + display_channel_name(channel) + "</extra>",
+            )
+        )
+    fig.update_layout(
+        height=330,
+        margin=dict(l=34, r=18, t=10, b=28),
+        xaxis_title="날짜",
+        yaxis_title="영상 수",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        yaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
     )
     return fig
 
@@ -3195,6 +3327,7 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
 def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -> None:
     summary_df = filter_df_multi(data["summary"], channels)
     topic_video_df = filter_df_multi(data["topic_video"], channels)
+    topic_video_script_df = filter_df_multi(data["topic_video_script"], channels)
     frame_dist_df = filter_df_multi(data["frame_dist"], channels)
     audience_channel_df = filter_df_multi(data["audience_channel"], channels)
 
@@ -3206,6 +3339,7 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
         return
 
     topic_name_map = build_topic_name_map(data["topic_summary"])
+    topic_name_map_script = build_topic_name_map(data["topic_summary_script"])
 
     render_group_header(channels)
     st.markdown('<div style="height: 0.45rem;"></div>', unsafe_allow_html=True)
@@ -3215,7 +3349,14 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
         "선택한 채널들이 같은 이슈를 어떤 관점·주제·댓글 반응·해석 방향으로 다르게 보여주는지 비교합니다.",
         "이 화면은 여러 채널을 하나로 합산하지 않고, 채널별 값을 나란히 놓아 차이를 읽기 위한 비교 화면입니다.",
     )
-    summary_table_html = build_compare_summary_table_html(summary_df, channels, topic_name_map)
+    summary_table_html = build_compare_summary_table_html(
+        summary_df,
+        topic_video_df,
+        topic_video_script_df,
+        channels,
+        topic_name_map,
+        topic_name_map_script,
+    )
     if summary_table_html:
         st.markdown(summary_table_html, unsafe_allow_html=True)
     else:
@@ -3288,6 +3429,31 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
         else:
             st.plotly_chart(build_compare_topic_bar(topic_video_df, channels, topic_name_map), use_container_width=True)
 
+    st.markdown("")
+    extra_left, extra_right = st.columns(2, gap="large")
+
+    with extra_left:
+        section_header(
+            "스크립트 기준 주제",
+            "실제 영상 스크립트 본문에서 많이 나타난 주제를 채널별로 비교합니다.",
+            "제목·설명보다 실제 보도 본문에 가까운 텍스트를 기준으로 비교합니다.",
+        )
+        if topic_video_script_df.empty:
+            st.warning("스크립트 주제 데이터가 없습니다.")
+        else:
+            st.plotly_chart(build_compare_topic_bar(topic_video_script_df, channels, topic_name_map_script), use_container_width=True)
+
+    with extra_right:
+        section_header(
+            "날짜별 보도량",
+            "선택한 채널들이 어느 시기에 보도를 집중했는지 비교합니다.",
+            "선 그래프 하나가 한 채널이며, 날짜별 영상 수를 나타냅니다.",
+        )
+        if topic_video_df.empty:
+            st.warning("날짜별 집계 데이터가 없습니다.")
+        else:
+            st.plotly_chart(build_compare_volume_timeline(topic_video_df, channels), use_container_width=True)
+
 
 def main() -> None:
     apply_page_style()
@@ -3296,6 +3462,9 @@ def main() -> None:
     selected_channel, selected_group = render_sidebar(data["summary"])
     if len(selected_group) >= 2:
         render_group_dashboard(data, selected_group)
+        return
+    if len(selected_group) == 1:
+        render_compare_pending_state(selected_group)
         return
     if not selected_channel:
         render_empty_state()
