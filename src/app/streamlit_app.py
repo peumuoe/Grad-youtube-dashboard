@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 import base64
+from html import escape
 import json
 from pathlib import Path
 import re
@@ -486,6 +487,75 @@ def apply_page_style() -> None:
             font-weight: 800;
             color: #ffffff;
         }
+        .sidebar-group-panel {
+            margin-top: 0.95rem;
+            padding: 13px 12px 12px 12px;
+            border-radius: 16px;
+            border: 1px solid rgba(226,232,240,0.95);
+            background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(248,251,255,0.92));
+            box-shadow: 0 8px 20px rgba(15,23,42,0.04);
+        }
+        .sidebar-group-title {
+            color: #0f172a;
+            font-size: 0.95rem;
+            font-weight: 850;
+            margin-bottom: 0.2rem;
+        }
+        .sidebar-group-caption {
+            color: #64748b;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin-bottom: 0.5rem;
+        }
+        .group-head {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 0.55rem 0 1.05rem 0;
+        }
+        .group-logo-stack {
+            display: flex;
+            align-items: center;
+            padding-left: 10px;
+        }
+        .group-logo-mini {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #ffffff;
+            border: 2px solid #ffffff;
+            box-shadow: 0 10px 20px rgba(15,23,42,0.10);
+            margin-left: -10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #0f172a;
+            font-size: 0.72rem;
+            font-weight: 850;
+        }
+        .group-logo-mini img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 4px;
+            box-sizing: border-box;
+            display: block;
+        }
+        .group-name {
+            color: #0f172a;
+            font-size: 1.7rem;
+            font-weight: 900;
+            line-height: 1.16;
+            word-break: keep-all;
+        }
+        .group-sub {
+            color: #64748b;
+            font-size: 0.92rem;
+            font-weight: 700;
+            margin-top: 0.25rem;
+            line-height: 1.45;
+        }
         .overview-card {
             background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(247,250,252,0.96));
             border: 1px solid rgba(226,232,240,0.96);
@@ -830,7 +900,7 @@ def build_sidebar_channel_list_html(
 
 
 
-def render_sidebar(summary_df: pd.DataFrame) -> str | None:
+def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
     none_option = "선택 안 함"
 
     st.sidebar.markdown("## 채널 선택")
@@ -852,7 +922,29 @@ def render_sidebar(summary_df: pd.DataFrame) -> str | None:
         unsafe_allow_html=True,
     )
 
-    return active_channel
+    st.sidebar.markdown(
+        """
+        <div class="sidebar-group-panel">
+            <div class="sidebar-group-title">채널 묶어서 보기</div>
+            <div class="sidebar-group-caption">비슷한 성향이나 유형의 채널을 2개 이상 선택하면 합산 화면으로 볼 수 있습니다.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    group_enabled = st.sidebar.checkbox("복수 선택 사용", value=False, key="group_mode_enabled")
+    group_channels: list[str] = []
+    if group_enabled:
+        group_channels = st.sidebar.multiselect(
+            "묶을 채널",
+            channels,
+            default=[],
+            format_func=display_channel_name,
+            key="group_channel_selection",
+        )
+        if len(group_channels) == 1:
+            st.sidebar.caption("묶음 보기는 2개 이상 선택하면 적용됩니다.")
+
+    return active_channel, group_channels
 
 
 def render_empty_state() -> None:
@@ -890,6 +982,102 @@ def filter_df(df: pd.DataFrame, channel: str) -> pd.DataFrame:
     if df.empty or "channel_name" not in df.columns:
         return df.copy()
     return df[df["channel_name"] == channel].copy()
+
+
+def filter_df_multi(df: pd.DataFrame, channels: list[str] | tuple[str, ...]) -> pd.DataFrame:
+    if df.empty or "channel_name" not in df.columns:
+        return df.copy()
+    channel_set = {normalize_channel_name(channel) for channel in channels if normalize_channel_name(channel)}
+    if not channel_set:
+        return df.iloc[0:0].copy()
+    return df[df["channel_name"].isin(channel_set)].copy()
+
+
+def weighted_average(df: pd.DataFrame, value_col: str, weight_col: str = "video_count") -> float:
+    if df.empty or value_col not in df.columns:
+        return 0.0
+    values = pd.to_numeric(df[value_col], errors="coerce").fillna(0.0)
+    if weight_col not in df.columns:
+        return float(values.mean()) if len(values) else 0.0
+    weights = pd.to_numeric(df[weight_col], errors="coerce").fillna(0.0)
+    weight_sum = float(weights.sum())
+    if weight_sum <= 0:
+        return float(values.mean()) if len(values) else 0.0
+    return float((values * weights).sum() / weight_sum)
+
+
+def aggregate_distribution(
+    df: pd.DataFrame,
+    category_col: str,
+    count_col: str,
+    share_col: str,
+) -> pd.DataFrame:
+    if df.empty or category_col not in df.columns:
+        return pd.DataFrame(columns=[category_col, count_col, share_col])
+
+    chart_df = df[[category_col] + ([count_col] if count_col in df.columns else [])].dropna(subset=[category_col]).copy()
+    if chart_df.empty:
+        return pd.DataFrame(columns=[category_col, count_col, share_col])
+
+    if count_col in chart_df.columns:
+        chart_df[count_col] = pd.to_numeric(chart_df[count_col], errors="coerce").fillna(0.0)
+    elif share_col in df.columns:
+        chart_df[count_col] = pd.to_numeric(df.loc[chart_df.index, share_col], errors="coerce").fillna(0.0)
+    else:
+        chart_df[count_col] = 1.0
+
+    grouped_df = chart_df.groupby(category_col, as_index=False).agg(**{count_col: (count_col, "sum")})
+    total = float(grouped_df[count_col].sum())
+    grouped_df[share_col] = grouped_df[count_col] / total if total > 0 else 0.0
+    return grouped_df.sort_values(share_col, ascending=False).copy()
+
+
+def top_value(df: pd.DataFrame, label_col: str, value_col: str, fallback: str = "기타/혼합") -> str:
+    if df.empty or label_col not in df.columns or value_col not in df.columns:
+        return fallback
+    ranked_df = df.sort_values(value_col, ascending=False)
+    if ranked_df.empty:
+        return fallback
+    return str(ranked_df.iloc[0][label_col])
+
+
+def group_logo_stack_html(channels: list[str]) -> str:
+    logo_parts: list[str] = []
+    for channel in channels[:6]:
+        data_uri = load_logo_data_uri(channel)
+        if data_uri:
+            logo_parts.append(
+                f'<div class="group-logo-mini" title="{escape(display_channel_name(channel))}">'
+                f'<img src="{data_uri}" alt="{escape(display_channel_name(channel))} logo" />'
+                "</div>"
+            )
+        else:
+            logo_parts.append(
+                f'<div class="group-logo-mini" title="{escape(display_channel_name(channel))}">'
+                f"{escape(logo_text(channel))}</div>"
+            )
+    if len(channels) > 6:
+        logo_parts.append(f'<div class="group-logo-mini">+{len(channels) - 6}</div>')
+    return '<div class="group-logo-stack">' + "".join(logo_parts) + "</div>"
+
+
+def render_group_header(channels: list[str]) -> None:
+    display_names = [display_channel_name(channel) for channel in channels]
+    visible_names = ", ".join(display_names[:4])
+    if len(display_names) > 4:
+        visible_names += f" 외 {len(display_names) - 4}개"
+    st.markdown(
+        f"""
+        <div class="group-head">
+            {group_logo_stack_html(channels)}
+            <div>
+                <div class="group-name">선택한 채널 묶음</div>
+                <div class="group-sub">{len(channels)}개 채널 · {escape(visible_names)}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def build_topic_name_map(topic_summary_df: pd.DataFrame) -> dict[str, str]:
@@ -2298,6 +2486,36 @@ def build_script_keyword_treemap_markup_cached(channel_name: str) -> str:
     return _build_keyword_treemap_markup(chart_df, "#DBEAFE", "#1D4ED8")
 
 
+def build_group_script_keyword_treemap_markup(
+    channels: list[str],
+    topic_video_script_df: pd.DataFrame,
+) -> str:
+    keyword_summary_df = normalize_channel_column(load_csv(SCRIPT_KEYWORD_SUMMARY_FILE))
+    keyword_rows: list[dict[str, float]] = []
+
+    if not keyword_summary_df.empty:
+        filtered_summary_df = filter_df_multi(keyword_summary_df, channels)
+        if not filtered_summary_df.empty and {"keyword", "count"}.issubset(filtered_summary_df.columns):
+            chart_df = filtered_summary_df[["keyword", "count"]].dropna(subset=["keyword"]).copy()
+            chart_df["count"] = pd.to_numeric(chart_df["count"], errors="coerce").fillna(0.0)
+            chart_df = (
+                chart_df[chart_df["count"] > 0]
+                .groupby("keyword", as_index=False)
+                .agg(count=("count", "sum"))
+                .sort_values("count", ascending=False)
+                .head(15)
+            )
+            keyword_rows = chart_df.to_dict("records")
+
+    if not keyword_rows:
+        keyword_rows = _extract_script_keyword_rows(topic_video_script_df, limit=15)
+    if not keyword_rows:
+        return ""
+
+    chart_df = pd.DataFrame(keyword_rows).sort_values("count", ascending=False).copy()
+    return _build_keyword_treemap_markup(chart_df, "#DBEAFE", "#1D4ED8")
+
+
 def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
     keyword_rows = _extract_script_keyword_rows(topic_video_df, limit=12)
     if not keyword_rows:
@@ -2602,11 +2820,175 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
                 st.info("현재 스크립트 핵심 단어를 만들 수 없어 이 영역을 비워두었습니다.")
 
 
+def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -> None:
+    summary_df = filter_df_multi(data["summary"], channels)
+    topic_video_df = filter_df_multi(data["topic_video"], channels)
+    topic_video_script_df = filter_df_multi(data["topic_video_script"], channels)
+    frame_dist_df = aggregate_distribution(
+        filter_df_multi(data["frame_dist"], channels),
+        category_col="primary_frame",
+        count_col="video_count",
+        share_col="frame_share_within_channel",
+    )
+    audience_channel_df = aggregate_distribution(
+        filter_df_multi(data["audience_channel"], channels),
+        category_col="primary_reaction",
+        count_col="comment_count",
+        share_col="reaction_share_within_channel",
+    )
+
+    if len(channels) < 2:
+        render_empty_state()
+        return
+    if summary_df.empty:
+        st.warning("선택한 채널 묶음에 표시할 데이터가 없습니다.")
+        return
+
+    topic_name_map = build_topic_name_map(data["topic_summary"])
+    topic_name_map_script = build_topic_name_map(data["topic_summary_script"])
+    ideology_score = weighted_average(summary_df, "ideology_relative_score", "video_count")
+    dominant_frame = top_value(frame_dist_df, "primary_frame", "frame_share_within_channel")
+    dominant_reaction = top_value(audience_channel_df, "primary_reaction", "reaction_share_within_channel")
+
+    if topic_video_df.empty:
+        dominant_topic_name = "데이터 없음"
+    else:
+        dominant_topic_label = (
+            topic_video_df.groupby("topic_label")["video_id"].count().sort_values(ascending=False).index[0]
+        )
+        dominant_topic_name = get_topic_display_name(topic_name_map, str(dominant_topic_label))
+
+    render_group_header(channels)
+    st.markdown('<div style="height: 0.45rem;"></div>', unsafe_allow_html=True)
+
+    col1, col2, col3, col4 = st.columns(4)
+    metric_card(col1, "대표 보도 관점", dominant_frame, FRAME_DESCRIPTION_MAP.get(dominant_frame, ""))
+    metric_card(col2, "대표 주제", dominant_topic_name, "선택한 채널 묶음에서 가장 자주 등장한 이슈 묶음")
+    metric_card(col3, "대표 댓글 반응", dominant_reaction, REACTION_DESCRIPTION_MAP.get(dominant_reaction, ""))
+    metric_card(col4, "해석 방향", classify_direction_display(ideology_score), direction_explainer_display(ideology_score))
+
+    st.markdown("")
+    top_left, top_right = st.columns(2, gap="large")
+
+    with top_left:
+        section_header(
+            "해석 방향",
+            direction_short_caption_display(ideology_score),
+            "선택한 채널들의 이란 전쟁 관련 보도에서 드러난 표현 단서를 영상 수 기준으로 묶어 본 상대적 위치입니다.",
+        )
+        st.markdown(build_direction_markup_display(ideology_score), unsafe_allow_html=True)
+
+    with top_right:
+        section_header(
+            "보도 관점",
+            f"선택한 채널 묶음에서 가장 자주 등장한 관점은 {dominant_frame}입니다.",
+            "각 채널의 프레임 건수를 합산한 뒤 전체 비율을 다시 계산한 결과입니다.",
+        )
+        if frame_dist_df.empty:
+            st.warning("프레임 데이터가 없습니다.")
+        else:
+            st.plotly_chart(build_frame_donut(frame_dist_df), use_container_width=True)
+
+    st.markdown("")
+    bottom_left, bottom_right = st.columns(2, gap="large")
+
+    with bottom_left:
+        section_header(
+            "시청자 반응",
+            f"선택한 채널 묶음에서 가장 많이 나타난 반응은 {dominant_reaction}입니다.",
+            "선택한 채널들의 댓글 반응 건수를 합산해 다시 비율을 계산했습니다.",
+        )
+        if audience_channel_df.empty:
+            st.warning("댓글 반응 데이터가 없습니다.")
+        else:
+            st.plotly_chart(build_reaction_donut(audience_channel_df), use_container_width=True)
+
+    with bottom_right:
+        section_header(
+            "제목·설명 기준 주제",
+            f"가장 많이 보인 주제는 {dominant_topic_name}입니다.",
+            "선택한 채널들의 제목·설명 기반 토픽 결과를 합산했습니다.",
+        )
+        if topic_video_df.empty:
+            st.warning("주제 데이터가 없습니다.")
+        else:
+            st.plotly_chart(build_topic_bar(topic_video_df, topic_name_map), use_container_width=True)
+
+    st.markdown("")
+    extra_left, extra_right = st.columns(2, gap="large")
+
+    with extra_left:
+        section_header(
+            "자주 나온 핵심 단어",
+            "선택한 채널 묶음의 제목·설명에서 반복해서 많이 등장한 단어입니다.",
+            "채널별 텍스트를 합쳐 불필요한 안내 문구와 조사성 표현을 정리한 뒤 집계했습니다.",
+        )
+        if topic_video_df.empty:
+            st.warning("단어 분석 데이터가 없습니다.")
+        else:
+            render_treemap_component(build_keyword_treemap_markup(topic_video_df))
+
+    with extra_right:
+        section_header(
+            "날짜별 보도량",
+            "선택한 채널 묶음이 이슈를 어느 시기에 더 많이 다뤘는지 보여줍니다.",
+            "선택한 채널들의 영상 업로드 수를 날짜별로 합산했습니다.",
+        )
+        if topic_video_df.empty:
+            st.warning("날짜별 집계 데이터가 없습니다.")
+        else:
+            st.plotly_chart(build_volume_timeline(topic_video_df), use_container_width=True)
+
+    st.markdown("")
+    render_subsection_header(
+        "스크립트 기반 분석",
+        "아래 결과는 제목·설명이 아니라 실제 영상 스크립트 본문을 기준으로 선택한 채널 묶음을 합산한 분석입니다.",
+    )
+
+    if topic_video_script_df.empty:
+        render_status_card(
+            "선택한 채널 묶음에는 현재 스크립트 기반 분석 대상이 없습니다",
+            "수집된 스크립트가 없거나 분석에 사용할 만큼 정리된 스크립트가 없는 상태입니다.",
+        )
+        return
+
+    script_left, script_right = st.columns(2, gap="large")
+
+    with script_left:
+        dominant_script_topic = (
+            topic_video_script_df.groupby("topic_label")["video_id"].count().sort_values(ascending=False).index[0]
+        )
+        section_header(
+            "스크립트 기준 주제",
+            f"스크립트 본문 기준으로는 {get_topic_display_name(topic_name_map_script, str(dominant_script_topic))} 주제가 가장 많이 보입니다.",
+            "선택한 채널들의 실제 영상 스크립트 본문을 합산해 만든 주제 분석입니다.",
+        )
+        st.plotly_chart(build_script_topic_bar(topic_video_script_df, topic_name_map_script), use_container_width=True)
+
+    with script_right:
+        section_header(
+            "스크립트 핵심 단어",
+            "선택한 채널 묶음의 영상 본문 스크립트에서 반복해서 많이 등장한 표현입니다.",
+            "사전 계산된 스크립트 키워드 표를 우선 사용하고, 없을 때만 본문에서 다시 집계합니다.",
+        )
+        script_keyword_markup = build_group_script_keyword_treemap_markup(channels, topic_video_script_df)
+        script_keyword_fig = build_script_keyword_bar_chart(topic_video_script_df)
+        if render_treemap_component(script_keyword_markup):
+            pass
+        elif script_keyword_fig.data:
+            st.plotly_chart(script_keyword_fig, use_container_width=True)
+        else:
+            st.info("현재 스크립트 핵심 단어를 만들 수 없어 이 영역을 비워두었습니다.")
+
+
 def main() -> None:
     apply_page_style()
     data = load_data(get_data_version_key())
     render_header()
-    selected_channel = render_sidebar(data["summary"])
+    selected_channel, selected_group = render_sidebar(data["summary"])
+    if len(selected_group) >= 2:
+        render_group_dashboard(data, selected_group)
+        return
     if not selected_channel:
         render_empty_state()
         return
