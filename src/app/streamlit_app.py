@@ -1069,14 +1069,14 @@ def build_sidebar_channel_list_html(
             action_href = compare_href(next_selection, active_channel)
             picked_class = ' compare-picked' if channel in compare_set else ''
             action_class = ' remove' if channel in compare_set else ''
-            action_label = '빼기' if channel in compare_set else '담기'
+            action_label = '해제' if channel in compare_set else '비교'
             parts.append(
                 f'<div class="sidebar-channel-row{picked_class}">'
                 f'<a class="sidebar-channel-link{active_class}" href="{channel_href}" target="_self" title="{escape(channel.strip())} 보기">'
                 f'{sidebar_logo_html(channel)}'
                 f'<span class="sidebar-channel-label">{escape(display_name)}</span>'
                 '</a>'
-                f'<a class="compare-action-button{action_class}" href="{action_href}" target="_self" title="{escape(display_name)} 비교 {action_label}">{action_label}</a>'
+                f'<a class="compare-action-button{action_class}" href="{action_href}" target="_self" title="{escape(display_name)} {action_label}">{action_label}</a>'
                 '</div>'
             )
         else:
@@ -1139,7 +1139,7 @@ def build_compare_dropzone_html(selected_channels: list[str]) -> str:
             "</div>"
         )
     for _ in range(max(0, 2 - len(selected_channels))):
-        parts.append('<div class="compare-slot empty">여기에 채널을 담아 비교</div>')
+        parts.append('<div class="compare-slot empty">비교할 채널 대기 중</div>')
     parts.append("</div>")
     if selected_channels:
         parts.append('<a class="compare-clear-link" href="?" target="_self">비교 칸 초기화</a>')
@@ -1169,8 +1169,10 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
     st.sidebar.markdown(
         """
         <div class="sidebar-group-panel">
-            <div class="sidebar-group-title">비교 칸</div>
-            <div class="sidebar-group-caption">로고와 채널명은 단일 보기, 오른쪽 담기 버튼은 비교 칸에 추가하는 기능입니다.</div>
+            <div class="sidebar-group-title">채널 하나 보기</div>
+            <div class="sidebar-group-caption">로고와 채널명을 누르면 해당 채널의 상세 분석 화면을 볼 수 있습니다.</div>
+            <div class="sidebar-group-title" style="margin-top:0.8rem;">채널 비교하기</div>
+            <div class="sidebar-group-caption">오른쪽 <b>[비교]</b> 버튼으로 2개 이상 담으면 비교 화면으로 전환됩니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1180,7 +1182,7 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
         unsafe_allow_html=True,
     )
     st.sidebar.markdown(
-        '<div class="compare-mode-hint">비슷한 성향이나 유형의 채널을 2개 이상 담으면 비교 화면으로 전환됩니다.</div>',
+        '<div class="compare-mode-hint">채널명은 단일 보기, 오른쪽 버튼은 비교 추가/해제입니다.</div>',
         unsafe_allow_html=True,
     )
 
@@ -1218,7 +1220,7 @@ def render_compare_pending_state(selected_channels: list[str]) -> None:
         f"""
         <div class="compare-pending">
             <div class="compare-pending-title">비교할 채널을 하나 더 담아 주세요</div>
-            <div>현재 <b>{escape(selected_name)}</b> 채널이 비교 칸에 담겨 있습니다. 왼쪽 채널 카드에서 하나를 더 누르면 비교 화면이 열립니다.</div>
+            <div>현재 <b>{escape(selected_name)}</b> 채널이 비교 칸에 담겨 있습니다. 왼쪽 채널 목록에서 다른 채널의 <b>[비교]</b> 버튼을 누르면 비교 화면이 열립니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
