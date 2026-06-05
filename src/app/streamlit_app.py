@@ -480,26 +480,40 @@ def apply_page_style() -> None:
             flex: 1 1 auto;
             min-width: 0;
         }
+        .view-action-button,
         .compare-action-button {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            flex: 0 0 42px;
+            flex: 0 0 38px;
             min-height: 44px;
             text-decoration: none;
             border-radius: 12px;
-            border: 1px solid rgba(20,184,166,0.30);
-            background: rgba(240,253,250,0.92);
-            color: #0f766e;
             font-size: 0.72rem;
             font-weight: 900;
             transition: all 0.18s ease;
             white-space: nowrap;
         }
+        .view-action-button {
+            border: 1px solid rgba(59,130,246,0.28);
+            background: rgba(239,246,255,0.92);
+            color: #1d4ed8;
+        }
+        .compare-action-button {
+            border: 1px solid rgba(20,184,166,0.30);
+            background: rgba(240,253,250,0.92);
+            color: #0f766e;
+        }
+        .view-action-button:hover,
         .compare-action-button:hover {
-            border-color: rgba(20,184,166,0.62);
             box-shadow: 0 6px 14px rgba(15,23,42,0.06);
             transform: translateY(-1px);
+        }
+        .view-action-button:hover {
+            border-color: rgba(59,130,246,0.58);
+        }
+        .compare-action-button:hover {
+            border-color: rgba(20,184,166,0.62);
         }
         .compare-action-button.remove {
             border-color: rgba(225,29,72,0.26);
@@ -1072,10 +1086,11 @@ def build_sidebar_channel_list_html(
             action_label = '해제' if channel in compare_set else '비교'
             parts.append(
                 f'<div class="sidebar-channel-row{picked_class}">'
-                f'<a class="sidebar-channel-link{active_class}" href="{channel_href}" target="_self" title="{escape(channel.strip())} 보기">'
+                f'<div class="sidebar-channel-link{active_class}" title="{escape(channel.strip())}">'
                 f'{sidebar_logo_html(channel)}'
                 f'<span class="sidebar-channel-label">{escape(display_name)}</span>'
-                '</a>'
+                '</div>'
+                f'<a class="view-action-button" href="{channel_href}" target="_self" title="{escape(display_name)} 보기">보기</a>'
                 f'<a class="compare-action-button{action_class}" href="{action_href}" target="_self" title="{escape(display_name)} {action_label}">{action_label}</a>'
                 '</div>'
             )
@@ -1169,10 +1184,8 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
     st.sidebar.markdown(
         """
         <div class="sidebar-group-panel">
-            <div class="sidebar-group-title">채널 하나 보기</div>
-            <div class="sidebar-group-caption">로고와 채널명을 누르면 해당 채널의 상세 분석 화면을 볼 수 있습니다.</div>
-            <div class="sidebar-group-title" style="margin-top:0.8rem;">채널 비교하기</div>
-            <div class="sidebar-group-caption">오른쪽 <b>[비교]</b> 버튼으로 2개 이상 담으면 비교 화면으로 전환됩니다.</div>
+            <div class="sidebar-group-title">채널 보기와 비교</div>
+            <div class="sidebar-group-caption"><b>[보기]</b>는 단일 채널 상세 화면, <b>[비교]</b>는 비교 칸에 채널을 담는 기능입니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1182,7 +1195,7 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
         unsafe_allow_html=True,
     )
     st.sidebar.markdown(
-        '<div class="compare-mode-hint">채널명은 단일 보기, 오른쪽 버튼은 비교 추가/해제입니다.</div>',
+        '<div class="compare-mode-hint">비교 칸에 2개 이상 담으면 비교 화면으로 전환됩니다.</div>',
         unsafe_allow_html=True,
     )
 
