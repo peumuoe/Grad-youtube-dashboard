@@ -1,354 +1,173 @@
-# YouTube Collection Pipeline for Iran War Coverage Study
+# 이란 전쟁 뉴스 채널 분석 대시보드
 
-이 저장소는 `2026-03-01 ~ 2026-03-21` 기간의 이란 전쟁 관련 한국 유튜브 뉴스 채널 영상을 수집하기 위한 1차 파이프라인입니다. 현재 단계의 목표는 분석이 아니라 `영상 메타데이터`, `최상위 댓글`, `자막/스크립트용 스텁 데이터셋`을 재실행 가능한 형태로 구축하는 것입니다.
+2026년 3월 이란 전쟁 관련 한국 유튜브 뉴스 채널의 보도 프레임, 담론 토픽, 이념적 기울기, 수용자 반응을 분석하고 Streamlit 대시보드로 시각화한 프로젝트입니다.
 
-## 1. 프로젝트 구조
+배포 링크: [grad-youtube-dashboard.streamlit.app](https://grad-youtube-dashboard.streamlit.app)
+
+## 프로젝트 목적
+
+이 프로젝트는 특정 채널의 본질적 정치 성향을 단정하지 않습니다. 분석 범위는 `2026.03.01 ~ 2026.03.21` 기간에 수집된 이란 전쟁 관련 유튜브 뉴스 데이터에 한정하며, 대시보드의 이념 지표는 해당 이슈 코퍼스 안에서 드러난 상대적 표현 방향을 보여주는 `이념적 기울기 추정`으로 해석합니다.
+
+주요 목표는 다음과 같습니다.
+
+- 채널별 보도 프레임 분포 확인
+- 제목·설명 기반 메타데이터 토픽 분석
+- 스크립트 기반 본문 토픽 분석
+- 댓글 기반 수용자 반응 분석
+- 이란 전쟁 이슈 내 상대적 이념적 기울기 시각화
+- 여러 채널의 프레임, 주제, 반응 차이 비교
+
+## 대시보드 주요 기능
+
+- 채널별 상세 보기: 로고가 포함된 채널 목록에서 한 채널을 선택해 요약 카드와 그래프를 확인합니다.
+- 채널 비교 보기: 여러 채널을 비교 칸에 담아 주요 지표를 나란히 비교합니다.
+- 보도 프레임 분석: 안보·군사, 국제정치·외교, 경제·에너지, 투자·시장, 인도주의·민간피해, 기타/혼합 프레임을 비교합니다.
+- 메타데이터 기준 주제: 영상 제목과 설명문에서 나타난 주요 주제를 확인합니다.
+- 스크립트 기준 주제: 영상 본문 스크립트 기준으로 나타난 주제를 확인합니다.
+- 핵심 단어 트리맵: 제목·설명 및 스크립트에서 반복적으로 등장한 단어를 시각화합니다.
+- 댓글 반응 분석: 수용자 댓글을 지지·공감, 정보·해석, 우려·불안, 비판·반대, 기타/혼합 등으로 분류해 보여줍니다.
+- 이념적 기울기: 채널을 보수/진보로 단정하지 않고, 해당 이슈에서의 상대적 위치를 연속 스케일로 표시합니다.
+
+## 분석 대상
+
+분석 대상은 한국어 유튜브 뉴스 채널 12개입니다.
+
+- JTBC News
+- KBS News
+- MBC NEWS
+- MBN News
+- SBS Biz 뉴스
+- SBS 뉴스
+- YTN
+- 뉴스TV CHOSUN
+- 매일경제TV
+- 연합뉴스TV
+- 채널A News
+- 한국경제TV
+
+## 수집 데이터
+
+수집 기간은 `2026.03.01 ~ 2026.03.21`입니다.
+
+수집 및 분석에 사용한 주요 데이터는 다음과 같습니다.
+
+- 메타데이터: 영상 제목, 설명문, 업로드 날짜, 채널명, 조회수, 댓글 수 등
+- 댓글 데이터: 영상별 최상위 댓글
+- 스크립트: 공개 자막, 제공 스크립트, 보완 전사 자료
+
+데이터 수집은 YouTube Data API 기반으로 수행했으며, 채널, 키워드, 기간 조건을 조합해 이란 전쟁 관련 영상을 선별했습니다.
+
+## 분석 방법
+
+### 1. 토픽 분석
+
+영상 제목·설명과 스크립트 본문을 분리해 토픽을 추출했습니다. 짧은 텍스트의 한계를 보완하기 위해 스크립트 기반 분석을 별도로 구성했으며, 조사, 접속어, 방송 포맷성 단어, 반복 표현 등은 전처리 과정에서 제거했습니다.
+
+### 2. 프레임 분류
+
+보도 프레임은 다음 범주로 분류했습니다.
+
+- 안보·군사
+- 국제정치·외교
+- 경제·에너지
+- 투자·시장
+- 인도주의·민간피해
+- 기타/혼합
+
+### 3. 이념적 기울기 추정
+
+이념적 기울기는 채널 자체의 정치 성향 판정이 아니라, 이란 전쟁 이슈 코퍼스에서 나타난 상대적 표현 방향입니다. 프레임 분포와 텍스트 단서의 영향을 점검하되, 특정 채널을 사전에 보수 또는 진보로 분류하는 방식은 사용하지 않았습니다.
+
+### 4. 수용자 반응 분석
+
+댓글은 채널 성향 판정용이 아니라 수용자 반응 분석용으로 사용했습니다. 댓글 반응은 정보·해석, 우려·불안, 비판·반대, 지지·공감, 기타/혼합 등으로 분류했습니다.
+
+## 프로젝트 구조
 
 ```text
-project/
-  data/
-    raw/
-    processed/
-    mart/
-  config/
-    channels_master.csv
-    keywords_master.csv
-  scripts/
-    01_collect_videos.py
-    02_collect_comments.py
-    03_collect_transcripts_stub.py
-  src/
-    config_loader.py
-    io_utils.py
-    youtube_client.py
-  logs/
-  .env.example
-  requirements.txt
-  README.md
+.
+├─ config/
+│  ├─ channels_master.csv
+│  ├─ keywords_master.csv
+│  ├─ provided_scripts_master.csv
+│  └─ transcript_replacements.csv
+├─ data/
+│  ├─ raw/
+│  └─ processed/
+├─ outputs/
+│  ├─ figures/
+│  └─ tables/
+├─ scripts/
+│  ├─ 01_collect_videos.py
+│  ├─ 02_collect_comments.py
+│  ├─ 32_run_topic_analysis.py
+│  ├─ 33_run_frame_analysis.py
+│  ├─ 34_run_ideology_estimation.py
+│  ├─ 35_build_analysis_summary_tables.py
+│  └─ 38_run_audience_reaction_analysis.py
+├─ src/
+│  ├─ analyze/
+│  ├─ app/
+│  │  └─ streamlit_app.py
+│  ├─ collect/
+│  └─ preprocess/
+├─ requirements.txt
+└─ README.md
 ```
 
-현재 실제 작업 루트는 이 저장소 루트이며, 위 `project/`는 구조 설명용 이름입니다.
+## 로컬 실행 방법
 
-## 2. 가상환경 생성 및 활성화
-
-Windows PowerShell 기준:
+Windows PowerShell 기준입니다.
 
 ```powershell
+cd C:\Users\PC2512\Desktop\Grad
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-비활성화:
-
-```powershell
-deactivate
-```
-
-## 3. 패키지 설치
-
-```powershell
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python -m streamlit run src\app\streamlit_app.py
 ```
 
-## 4. `.env` 설정 방법
-
-1. `.env.example` 파일을 복사해서 `.env` 파일을 만듭니다.
-2. 아래처럼 YouTube Data API 키를 입력합니다.
-
-```env
-YOUTUBE_API_KEY=your_real_api_key
-OUTPUT_FORMAT=csv
-LOG_LEVEL=INFO
-```
-
-`OUTPUT_FORMAT`은 `csv` 또는 `parquet`를 사용할 수 있고, 기본 권장값은 `csv`입니다.
-
-## 5. 설정 파일 수정 방법
-
-### `config/channels_master.csv`
-
-컬럼:
-
-- `channel_type`
-- `channel_name`
-- `channel_id`
-- `priority`
-- `include_flag`
-- `notes`
-
-수집 대상에 포함할 채널은 `include_flag=1`로 둡니다.
-
-### `channel_id` 채우는 방법
-
-가장 안정적인 방법은 각 채널의 YouTube 페이지에서 실제 채널 ID(`UC...`)를 확인해 직접 넣는 것입니다.
-
-1. 유튜브에서 해당 채널을 엽니다.
-2. 채널 URL이 `https://www.youtube.com/channel/UC...` 형태면 `UC...` 전체를 복사합니다.
-3. `@handle` 형태 URL만 보일 경우, 채널의 공유 링크나 페이지 소스, 또는 YouTube Data API 조회 결과에서 실제 `UC...` 채널 ID를 확인합니다.
-4. `config/channels_master.csv`의 `channel_id` 칸에 입력합니다.
-
-예시:
-
-```csv
-공영·지상파,KBS 뉴스,UC...실제채널ID...,1,1,입력완료
-```
-
-### `config/keywords_master.csv`
-
-컬럼:
-
-- `priority`
-- `keyword`
-- `note`
-
-키워드는 이후 확장 가능하며, 코드에 하드코딩하지 않고 이 파일에서 관리합니다.
-
-## 6. 실행 순서
-
-### 0) 채널 ID 후보 찾기
-
-`channel_id`가 비어 있으면 먼저 후보를 조회할 수 있습니다.
+이미 가상환경이 만들어져 있다면 아래 명령어만 실행하면 됩니다.
 
 ```powershell
-python scripts/00_resolve_channel_ids.py
+cd C:\Users\PC2512\Desktop\Grad
+.\.venv\Scripts\python.exe -m streamlit run src\app\streamlit_app.py
 ```
 
-동작:
-
-- `channels_master.csv`에서 `include_flag=1`이면서 `channel_id`가 빈 채널을 읽음
-- 채널명 기준으로 유튜브 채널 검색
-- 후보 결과를 `data/raw/channel_id_candidates.csv`에 저장
-- 저장된 후보를 보고 실제 `UC...` 값을 `config/channels_master.csv`에 반영
-
-### 1) 영상 수집
+## 주요 재분석 명령어
 
 ```powershell
-python scripts/01_collect_videos.py
+.\.venv\Scripts\python.exe scripts\32_run_topic_analysis.py
+.\.venv\Scripts\python.exe scripts\33_run_frame_analysis.py
+.\.venv\Scripts\python.exe scripts\34_run_ideology_estimation.py
+.\.venv\Scripts\python.exe scripts\35_build_analysis_summary_tables.py
+.\.venv\Scripts\python.exe scripts\38_run_audience_reaction_analysis.py
 ```
 
-동작:
+## 배포
 
-- `channels_master.csv`와 `keywords_master.csv`를 읽음
-- `include_flag=1` 채널만 수집
-- 채널 x 키워드 x 기간 기준 검색
-- `video_id` 기준 중복 제거
-- `data/raw/videos_raw.csv` 또는 `data/raw/videos_raw.parquet` 저장
+Streamlit Community Cloud에서 다음 설정으로 배포합니다.
 
-### 2) 댓글 수집
+- Repository: `peumuoe/Grad-youtube-dashboard`
+- Branch: `main`
+- Main file path: `src/app/streamlit_app.py`
+- App URL: `grad-youtube-dashboard.streamlit.app`
 
-```powershell
-python scripts/02_collect_comments.py
-```
+GitHub에 수정사항을 반영하면 Streamlit Cloud가 자동으로 재배포합니다. 반영이 늦을 경우 앱 우측 하단 `Manage app`에서 `Reboot app`을 실행하면 됩니다.
 
-동작:
+## 해석 시 주의사항
 
-- `videos_raw`를 읽음
-- 각 `video_id`의 최상위 댓글만 수집
-- `comment_id` 기준 중복 제거
-- `data/raw/comments_raw.csv` 또는 `parquet` 저장
+- 본 대시보드는 연구·실습 목적의 탐색적 분석 결과입니다.
+- 채널의 본질적 정치 성향을 판정하지 않습니다.
+- 이념적 기울기는 특정 기간과 특정 이슈 안에서 나타난 상대적 위치입니다.
+- 댓글은 전체 여론을 대표하지 않으며, 해당 영상에 결합된 플랫폼 내 수용자 반응으로 제한해 해석해야 합니다.
+- 자동 분류와 토픽 모델링 결과는 전처리 기준과 데이터 수집 범위에 따라 달라질 수 있습니다.
 
-### 3) 자막/스크립트 스텁 생성
+## 최종 업데이트
 
-```powershell
-python scripts/03_collect_transcripts_stub.py
-```
-
-동작:
-
-- `videos_raw`를 읽음
-- `provided_script -> public_caption -> stt -> none` 순서로 수집 시도
-- `provided_script`는 `config/provided_scripts_master.csv` 기준으로 우선 반영
-- 공개 자막은 `youtube-transcript-api`로 수집 시도
-- STT는 아직 구조만 분리되어 있고 실제 전사는 추후 구현
-- `data/raw/transcripts_raw.csv` 또는 `parquet` 저장
-
-### 4) 자막 검토 큐 생성
-
-```powershell
-python scripts/04_prepare_transcript_review.py
-```
-
-동작:
-
-- `transcripts_raw`를 읽음
-- `public_caption`, `stt`처럼 검토가 필요한 텍스트를 추림
-- `data/processed/transcripts_review_queue.csv` 생성
-- 수동 검토용 컬럼 유지:
-  - `manual_quality_label`
-  - `manual_review_status`
-  - `manual_corrected_text`
-  - `manual_title_summary`
-  - `manual_key_terms`
-  - `manual_review_notes`
-  - `final_use_flag`
-
-### 5) 분석용 전사본 생성
-
-```powershell
-python scripts/05_build_transcript_analysis_ready.py
-```
-
-동작:
-
-- `transcripts_raw`와 `transcripts_review_queue`를 합침
-- 수동 보정 텍스트가 있으면 우선 사용
-- 최종 분석 투입 여부를 `analysis_use_flag`로 표시
-- `data/processed/transcripts_analysis_ready.csv` 생성
-
-### 6) 텍스트 분석 코퍼스 생성
-
-```powershell
-python scripts/06_build_text_analysis_corpus.py
-```
-
-동작:
-
-- `videos_raw`를 기본 모체로 사용
-- 댓글이 있으면 영상 단위로 집계해서 결합
-- 검토 완료된 전사만 `analysis_use_flag=1`로 반영
-- 기본 분석 텍스트는 `title + description`
-- 신뢰 가능한 전사가 있으면 여기에만 전사 텍스트를 추가
-- `data/processed/text_analysis_corpus.csv` 생성
-
-### 7) 보수적 1차 전처리
-
-```powershell
-python scripts/07_preprocess_text_corpus.py
-```
-
-동작:
-
-- 원문은 유지
-- `normalized`, `light_clean`, `char_count`, `token_count`, `flag` 컬럼만 추가
-- 의미를 바꾸는 적극적 치환은 하지 않음
-- `data/processed/text_analysis_corpus_preprocessed.csv` 생성
-
-### 8) 2차 분석 입력셋 준비
-
-```powershell
-python scripts/08_prepare_analysis_inputs.py
-```
-
-동작:
-
-- 1차 전처리 결과를 읽음
-- `title/description`, `comments`, `transcript`의 사용 여부를 분리 판단
-- `topic_input_text`, `frame_input_text`, `audience_input_text`, `analysis_bundle_text` 생성
-- `data/processed/text_analysis_inputs_stage2.csv` 생성
-
-## 7. 저장 파일 스키마
-
-### `videos_raw`
-
-- `video_id`
-- `channel_id`
-- `channel_name`
-- `channel_type`
-- `title`
-- `description`
-- `published_at`
-- `view_count`
-- `like_count`
-- `comment_count`
-- `duration`
-- `url`
-- `search_keyword`
-- `collected_at`
-
-### `comments_raw`
-
-- `comment_id`
-- `video_id`
-- `author_display_name`
-- `author_channel_id`
-- `comment_text_raw`
-- `like_count`
-- `published_at`
-- `collected_at`
-
-### `transcripts_raw`
-
-- `video_id`
-- `transcript_source`
-- `transcript_text_raw`
-- `transcript_text_clean`
-- `transcript_text_corrected`
-- `transcript_quality`
-- `stt_applied`
-- `transcript_language_code`
-- `transcript_language`
-- `transcript_is_generated`
-- `transcript_segment_count`
-- `correction_status`
-- `correction_notes`
-- `text_needs_review`
-- `transcript_error`
-- `collected_at`
-
-`transcript_source`는 아래 값만 쓰도록 설계했습니다.
-
-- `public_caption`
-- `provided_script`
-- `stt`
-- `none`
-
-## 8. 로그와 재실행
-
-- 각 스크립트는 `logs/` 아래에 실행 로그를 남깁니다.
-- 이미 저장된 파일이 있으면 기존 데이터와 새 데이터를 합친 뒤 중복을 제거합니다.
-- 현재 기준 중복 키:
-  - 영상: `video_id`
-  - 댓글: `comment_id`
-  - 자막 스텁: `video_id`
-
-## 9. 다음 단계 확장 방향
-
-### STT 연결
-
-다음 단계에서는 `03_collect_transcripts_stub.py`를 실제 수집기로 바꾸면 됩니다.
-
-- 공개 자막이 있으면 `transcript_source=public_caption`
-- 외부에서 확보한 스크립트가 있으면 `transcript_source=provided_script`
-- 자막이 없으면 음성 추출 + STT 적용 후 `transcript_source=stt`
-- 아무것도 없으면 `transcript_source=none`
-
-추천 확장:
-
-- `src/transcript_client.py` 추가
-- `src/stt_client.py`에 실제 STT 엔진 연결
-- 음성 다운로드, 세그먼트 정리, 품질 점수 계산 함수 분리
-
-### 제공 스크립트와 보정 규칙
-
-- `config/provided_scripts_master.csv`
-  - `video_id` 기준으로 외부 확보 스크립트를 연결
-- `config/transcript_replacements.csv`
-  - 자주 틀리는 표기나 고유명사 보정 규칙 관리
-
-### 분석 파이프라인 연결
-
-이후에는 아래 순서로 붙이면 됩니다.
-
-1. `data/raw` 기반 전처리 모듈 작성
-2. 제목/설명/댓글 정제 데이터셋 생성
-3. 토픽 분석용 코퍼스 구성
-4. 프레임 분류용 피처 및 라벨 스키마 설계
-5. 채널별 이슈 코퍼스 단위의 상대적 이념적 기울기 추정
-6. Streamlit 대시보드 연결
-
-## 10. 주의사항
-
-- 이 프로젝트는 채널의 본질적 정치 성향을 판정하지 않습니다.
-- 이후 분석 단계에서도 “정치 성향 판정” 대신 “이념적 기울기 추정” 또는 “상대적 위치 추정” 표현을 사용해야 합니다.
-- 댓글은 채널 성향 판정용이 아니라 수용자 반응 분석용으로 우선 사용합니다.
-
-## 11. 2026-05 운영 메모
-
-- 현재 운영 우선순위는 `provided_script > public_caption > stt > none` 입니다.
-- 다만 실제 연구 마감 전략은 다음처럼 가져갑니다.
-  - 전수 분석의 기본 텍스트: `title + description`
-  - 댓글 수집 가능 시 댓글 텍스트 병행
-  - `provided_script`는 최우선 텍스트 소스
-  - `public_caption`은 확보되면 사용하되, 네트워크 차단으로 전수 확보를 전제하지 않음
-  - `stt`는 수동 검토와 보정 후 일부만 사용
-- 따라서 2026년 5월 3주차 마감 기준 전수 코퍼스는 `제목/설명/댓글 중심`, 전사는 `부분 보강 자료`로 보는 것이 안전합니다.
+- 대시보드 배포 링크 추가
+- 채널 로고 기반 선택 UI 반영
+- 단일 채널 보기와 복수 채널 비교 기능 정리
+- 메타데이터 기준 주제와 스크립트 기준 주제 설명 정리
+- YTN 등 일부 채널에서 요약 카드가 `nan`으로 표시될 수 있는 문제 보정
+- 트리맵 핵심 단어 전처리 및 노이즈 단어 정제
