@@ -1265,6 +1265,98 @@ def filter_df(df: pd.DataFrame, channel: str) -> pd.DataFrame:
     return df[df["channel_name"] == channel].copy()
 
 
+def is_missing_display_value(value: object) -> bool:
+    if value is None:
+        return True
+    try:
+        if pd.isna(value):
+            return True
+    except (TypeError, ValueError):
+        pass
+    return str(value).strip().lower() in {"", "nan", "none", "nat"}
+
+
+def dominant_row_value(
+    df: pd.DataFrame,
+    category_col: str,
+    count_col: str,
+    share_col: str | None = None,
+) -> tuple[str | None, float | None]:
+    if df.empty or category_col not in df.columns:
+        return None, None
+    chart_df = df.copy()
+    if count_col in chart_df.columns:
+        chart_df[count_col] = pd.to_numeric(chart_df[count_col], errors="coerce").fillna(0)
+        sort_cols = [count_col, category_col]
+        ascending = [False, True]
+    elif share_col and share_col in chart_df.columns:
+        chart_df[share_col] = pd.to_numeric(chart_df[share_col], errors="coerce").fillna(0)
+        sort_cols = [share_col, category_col]
+        ascending = [False, True]
+    else:
+        sort_cols = [category_col]
+        ascending = [True]
+    chart_df = chart_df.sort_values(sort_cols, ascending=ascending)
+    if chart_df.empty:
+        return None, None
+    row = chart_df.iloc[0]
+    category = str(row.get(category_col, "")).strip()
+    share = None
+    if share_col and share_col in row.index and not is_missing_display_value(row.get(share_col)):
+        share = float(row.get(share_col))
+    return (category or None), share
+
+
+def enrich_channel_summary_row(
+    channel_row: pd.Series,
+    frame_dist_df: pd.DataFrame,
+    topic_video_df: pd.DataFrame,
+    audience_channel_df: pd.DataFrame,
+) -> pd.Series:
+    """Fill stale summary NaNs from the source distribution tables used in charts."""
+    row = channel_row.copy()
+
+    if is_missing_display_value(row.get("dominant_frame")):
+        frame, frame_share = dominant_row_value(
+            frame_dist_df,
+            category_col="primary_frame",
+            count_col="video_count",
+            share_col="frame_share_within_channel",
+        )
+        if frame:
+            row["dominant_frame"] = frame
+        if frame_share is not None:
+            row["dominant_frame_share"] = frame_share
+
+    if is_missing_display_value(row.get("dominant_audience_reaction")):
+        reaction, reaction_share = dominant_row_value(
+            audience_channel_df,
+            category_col="primary_reaction",
+            count_col="comment_count",
+            share_col="reaction_share_within_channel",
+        )
+        if reaction:
+            row["dominant_audience_reaction"] = reaction
+        if reaction_share is not None:
+            row["dominant_audience_reaction_share"] = reaction_share
+
+    if is_missing_display_value(row.get("dominant_topic")) and not topic_video_df.empty and "topic_label" in topic_video_df.columns:
+        topic_counts = (
+            topic_video_df.groupby("topic_label", dropna=False)["video_id"]
+            .count()
+            .reset_index(name="video_count")
+            .sort_values(["video_count", "topic_label"], ascending=[False, True])
+        )
+        if not topic_counts.empty:
+            top_topic = str(topic_counts.iloc[0]["topic_label"]).strip()
+            row["dominant_topic"] = top_topic
+            total = float(topic_counts["video_count"].sum())
+            if total > 0:
+                row["dominant_topic_share"] = float(topic_counts.iloc[0]["video_count"]) / total
+
+    return row
+
+
 def filter_df_multi(df: pd.DataFrame, channels: list[str] | tuple[str, ...]) -> pd.DataFrame:
     if df.empty or "channel_name" not in df.columns:
         return df.copy()
@@ -3332,7 +3424,12 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
         st.warning("선택한 채널의 데이터가 없습니다.")
         return
 
-    channel_row = summary_df.iloc[0]
+    channel_row = enrich_channel_summary_row(
+        summary_df.iloc[0],
+        frame_dist_df=frame_dist_df,
+        topic_video_df=topic_video_df,
+        audience_channel_df=audience_channel_df,
+    )
     topic_name_map = build_topic_name_map(data["topic_summary"])
     topic_name_map_script = build_topic_name_map(data["topic_summary_script"])
     channel_type = str(topic_video_df["channel_type"].dropna().iloc[0]) if not topic_video_df.empty else "기타"
