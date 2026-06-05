@@ -471,6 +471,41 @@ def apply_page_style() -> None:
         .sidebar-channel-link.active .sidebar-logo-wrap {
             border-color: rgba(59,130,246,0.55);
         }
+        .sidebar-channel-row {
+            display: flex;
+            align-items: stretch;
+            gap: 7px;
+        }
+        .sidebar-channel-row .sidebar-channel-link {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        .compare-action-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 42px;
+            min-height: 44px;
+            text-decoration: none;
+            border-radius: 12px;
+            border: 1px solid rgba(20,184,166,0.30);
+            background: rgba(240,253,250,0.92);
+            color: #0f766e;
+            font-size: 0.72rem;
+            font-weight: 900;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+        .compare-action-button:hover {
+            border-color: rgba(20,184,166,0.62);
+            box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+            transform: translateY(-1px);
+        }
+        .compare-action-button.remove {
+            border-color: rgba(225,29,72,0.26);
+            background: rgba(255,241,242,0.92);
+            color: #be123c;
+        }
         .sidebar-channel-label {
             color: #0f172a;
             font-size: 0.92rem;
@@ -573,31 +608,10 @@ def apply_page_style() -> None:
             line-height: 1.45;
             margin: 0.35rem 0 0.5rem 0;
         }
-        .sidebar-channel-link.compare-pick {
-            border-color: rgba(20,184,166,0.28);
-        }
-        .sidebar-channel-link.compare-pick.active {
+        .sidebar-channel-row.compare-picked .sidebar-channel-link {
             border-color: rgba(20,184,166,0.62);
             box-shadow: 0 0 0 2px rgba(20,184,166,0.14), 0 8px 16px rgba(15,23,42,0.06);
             background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(236,253,245,0.96));
-        }
-        .compare-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 38px;
-            margin-left: auto;
-            padding: 0.18rem 0.45rem;
-            border-radius: 999px;
-            background: rgba(20,184,166,0.10);
-            color: #0f766e;
-            font-size: 0.72rem;
-            font-weight: 850;
-            white-space: nowrap;
-        }
-        .compare-pill.remove {
-            background: rgba(225,29,72,0.10);
-            color: #be123c;
         }
         .compare-board {
             background: rgba(255,255,255,0.96);
@@ -1044,30 +1058,34 @@ def build_sidebar_channel_list_html(
     compare_set = set(compare_channels)
     parts = ['<div class="sidebar-channel-list">']
     for channel in channels:
-        is_active = channel in compare_set if compare_mode else channel == active_channel
+        is_active = channel == active_channel
         active_class = ' active' if is_active else ''
-        compare_class = ' compare-pick' if compare_mode else ''
         display_name = display_channel_name(channel)
+        channel_href = selected_channel_href(channel, compare_channels if compare_mode else None)
         if compare_mode:
             next_selection = [selected for selected in compare_channels if selected != channel]
             if channel not in compare_set:
                 next_selection.append(channel)
-            href = compare_href(next_selection)
-            if channel in compare_set:
-                pill = '<span class="compare-pill remove">빼기</span>'
-            else:
-                pill = '<span class="compare-pill">담기</span>'
+            action_href = compare_href(next_selection, active_channel)
+            picked_class = ' compare-picked' if channel in compare_set else ''
+            action_class = ' remove' if channel in compare_set else ''
+            action_label = '빼기' if channel in compare_set else '담기'
+            parts.append(
+                f'<div class="sidebar-channel-row{picked_class}">'
+                f'<a class="sidebar-channel-link{active_class}" href="{channel_href}" target="_self" title="{escape(channel.strip())} 보기">'
+                f'{sidebar_logo_html(channel)}'
+                f'<span class="sidebar-channel-label">{escape(display_name)}</span>'
+                '</a>'
+                f'<a class="compare-action-button{action_class}" href="{action_href}" target="_self" title="{escape(display_name)} 비교 {action_label}">{action_label}</a>'
+                '</div>'
+            )
         else:
-            channel_param = quote(channel.strip())
-            href = f"?selected_channel={channel_param}"
-            pill = ""
-        parts.append(
-            f'<a class="sidebar-channel-link{compare_class}{active_class}" href="{href}" target="_self" title="{escape(channel.strip())}">'
-            f'{sidebar_logo_html(channel)}'
-            f'<span class="sidebar-channel-label">{escape(display_name)}</span>'
-            f'{pill}'
-            '</a>'
-        )
+            parts.append(
+                f'<a class="sidebar-channel-link{active_class}" href="{channel_href}" target="_self" title="{escape(channel.strip())}">'
+                f'{sidebar_logo_html(channel)}'
+                f'<span class="sidebar-channel-label">{escape(display_name)}</span>'
+                '</a>'
+            )
     parts.append('</div>')
     none_active = ' active' if active_channel is None else ''
     if compare_mode:
@@ -1094,10 +1112,20 @@ def parse_compare_channels(raw_value: object, channels: list[str]) -> list[str]:
     return selected
 
 
-def compare_href(selected_channels: list[str]) -> str:
+def selected_channel_href(channel: str, compare_channels: list[str] | None = None) -> str:
+    href = f"?selected_channel={quote(channel.strip())}"
+    if compare_channels:
+        href += f"&compare={quote('|'.join(compare_channels), safe='')}"
+    return href
+
+
+def compare_href(selected_channels: list[str], active_channel: str | None = None) -> str:
     if not selected_channels:
-        return "?"
-    return f"?compare={quote('|'.join(selected_channels), safe='')}"
+        return selected_channel_href(active_channel) if active_channel else "?"
+    href = f"?compare={quote('|'.join(selected_channels), safe='')}"
+    if active_channel:
+        href += f"&selected_channel={quote(active_channel.strip())}"
+    return href
 
 
 def build_compare_dropzone_html(selected_channels: list[str]) -> str:
@@ -1137,12 +1165,12 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
 
     st.sidebar.markdown("### 분석할 채널")
     group_channels = parse_compare_channels(st.query_params.get("compare"), channels)
-    active_channel = group_channels[0] if len(group_channels) == 1 else None if query_channel == none_option else query_channel
+    active_channel = None if query_channel == none_option else query_channel
     st.sidebar.markdown(
         """
         <div class="sidebar-group-panel">
             <div class="sidebar-group-title">비교 칸</div>
-            <div class="sidebar-group-caption">아래 채널 카드를 누르면 이 칸에 담깁니다. 1개는 단일 보기, 2개 이상은 비교 보기로 전환됩니다.</div>
+            <div class="sidebar-group-caption">로고와 채널명은 단일 보기, 오른쪽 담기 버튼은 비교 칸에 추가하는 기능입니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1152,7 +1180,7 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
         unsafe_allow_html=True,
     )
     st.sidebar.markdown(
-        '<div class="compare-mode-hint">채널 카드를 눌러 비교칸에 담거나 다시 눌러 빼세요.</div>',
+        '<div class="compare-mode-hint">비슷한 성향이나 유형의 채널을 2개 이상 담으면 비교 화면으로 전환됩니다.</div>',
         unsafe_allow_html=True,
     )
 
@@ -3472,13 +3500,13 @@ def main() -> None:
     if len(selected_group) >= 2:
         render_group_dashboard(data, selected_group)
         return
+    if selected_channel:
+        render_dashboard(data, selected_channel)
+        return
     if len(selected_group) == 1:
         render_compare_pending_state(selected_group)
         return
-    if not selected_channel:
-        render_empty_state()
-        return
-    render_dashboard(data, selected_channel)
+    render_empty_state()
 
 
 if __name__ == "__main__":
