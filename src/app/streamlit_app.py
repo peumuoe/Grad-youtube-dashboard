@@ -567,6 +567,12 @@ def apply_page_style() -> None:
             line-height: 1.45;
             margin: 0.25rem 0 0.45rem 0;
         }
+        .single-mode-hint {
+            color: #64748b;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin: 0.35rem 0 0.5rem 0;
+        }
         .sidebar-channel-link.compare-pick {
             border-color: rgba(20,184,166,0.28);
         }
@@ -1103,50 +1109,41 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
     if query_channel not in ([none_option] + channels):
         query_channel = none_option
 
-    group_channels = parse_compare_channels(st.query_params.get("compare"), channels)
-    if group_channels:
-        st.session_state["compare_mode_enabled"] = True
-
     st.sidebar.markdown("### 분석할 채널")
-    active_channel = None if query_channel == none_option else query_channel
+    group_channels = parse_compare_channels(st.query_params.get("compare"), channels)
+    active_channel = group_channels[0] if len(group_channels) == 1 else None if query_channel == none_option else query_channel
     st.sidebar.markdown(
         """
         <div class="sidebar-group-panel">
-            <div class="sidebar-group-title">비교 모드</div>
-            <div class="sidebar-group-caption">비교 모드를 켜면 아래 채널 카드가 단일 이동이 아니라 비교칸에 담기는 버튼으로 바뀝니다.</div>
+            <div class="sidebar-group-title">비교 칸</div>
+            <div class="sidebar-group-caption">아래 채널 카드를 누르면 이 칸에 담깁니다. 1개는 단일 보기, 2개 이상은 비교 보기로 전환됩니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    compare_mode = st.sidebar.checkbox(
-        "비교 모드 사용",
-        value=bool(st.session_state.get("compare_mode_enabled", False)),
-        key="compare_mode_enabled",
+    st.sidebar.markdown(
+        build_compare_dropzone_html(group_channels),
+        unsafe_allow_html=True,
     )
-    if compare_mode:
-        st.sidebar.markdown(
-            build_compare_dropzone_html(group_channels),
-            unsafe_allow_html=True,
-        )
-        st.sidebar.markdown(
-            '<div class="compare-mode-hint">아래 채널 카드를 눌러 비교칸에 담거나 다시 눌러 빼세요.</div>',
-            unsafe_allow_html=True,
-        )
+    st.sidebar.markdown(
+        '<div class="compare-mode-hint">채널 카드를 눌러 비교칸에 담거나 다시 눌러 빼세요.</div>',
+        unsafe_allow_html=True,
+    )
 
     st.sidebar.markdown(
         build_sidebar_channel_list_html(
             channels,
             active_channel,
             none_option=none_option,
-            compare_mode=compare_mode,
+            compare_mode=True,
             compare_channels=group_channels,
         ),
         unsafe_allow_html=True,
     )
-    if compare_mode and len(group_channels) == 1:
-        st.sidebar.caption("비교 화면은 채널을 하나 더 담으면 열립니다.")
+    if len(group_channels) == 1:
+        st.sidebar.caption("채널을 하나 더 담으면 비교 화면으로 전환됩니다.")
 
-    return (None if compare_mode else active_channel), (group_channels if compare_mode else [])
+    return active_channel, group_channels
 
 
 def render_empty_state() -> None:
@@ -1397,6 +1394,60 @@ def build_compare_direction_bar(summary_df: pd.DataFrame, channels: list[str]) -
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(zeroline=True, zerolinecolor="#94A3B8", gridcolor="rgba(148,163,184,0.18)"),
         yaxis=dict(autorange="reversed"),
+    )
+    return fig
+
+
+def build_compare_topic_bar(
+    topic_video_df: pd.DataFrame,
+    channels: list[str],
+    topic_name_map: dict[str, str],
+) -> go.Figure:
+    if topic_video_df.empty:
+        return go.Figure()
+    chart_df = topic_video_df[topic_video_df["channel_name"].isin(channels)].copy()
+    if chart_df.empty:
+        return go.Figure()
+    chart_df["topic_name"] = chart_df["topic_label"].apply(lambda label: get_topic_display_name(topic_name_map, str(label)))
+    chart_df = (
+        chart_df.groupby(["channel_name", "topic_name"], as_index=False)
+        .agg(video_count=("video_id", "count"))
+        .copy()
+    )
+    top_topics = (
+        chart_df.groupby("topic_name", as_index=False)
+        .agg(total_count=("video_count", "sum"))
+        .sort_values("total_count", ascending=False)
+        .head(5)["topic_name"]
+        .tolist()
+    )
+    chart_df = chart_df[chart_df["topic_name"].isin(top_topics)].copy()
+    fig = go.Figure()
+    palette = ["#3B82F6", "#14B8A6", "#F59E0B", "#8B5CF6", "#E11D48", "#64748B"]
+    for index, channel in enumerate(channels):
+        channel_df = chart_df[chart_df["channel_name"] == channel].set_index("topic_name").reindex(top_topics).reset_index()
+        channel_df["video_count"] = pd.to_numeric(channel_df["video_count"], errors="coerce").fillna(0)
+        fig.add_trace(
+            go.Bar(
+                x=channel_df["video_count"],
+                y=channel_df["topic_name"],
+                name=display_channel_name(channel),
+                orientation="h",
+                marker=dict(color=palette[index % len(palette)]),
+                hovertemplate="%{y}<br>%{x}개<extra>" + display_channel_name(channel) + "</extra>",
+            )
+        )
+    fig.update_layout(
+        barmode="group",
+        height=max(300, 58 * len(top_topics) + 70),
+        margin=dict(l=160, r=20, t=10, b=28),
+        xaxis_title="영상 수",
+        yaxis_title="",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(gridcolor="rgba(148,163,184,0.18)"),
+        yaxis=dict(autorange="reversed", automargin=True),
     )
     return fig
 
@@ -3229,13 +3280,13 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
     with bottom_right:
         section_header(
             "제목·설명 기준 주제",
-            "선택한 채널 전체에서 많이 등장한 제목·설명 주제를 함께 봅니다.",
-            "요약표에서는 채널별 대표 주제를, 아래 그래프에서는 선택 채널 전체의 주요 주제 흐름을 확인합니다.",
+            "주요 제목·설명 주제가 채널별로 얼마나 다르게 나타나는지 비교합니다.",
+            "같은 주제 안에서 채널별 영상 수를 나란히 놓아, 어떤 채널이 어떤 주제를 더 많이 다뤘는지 확인합니다.",
         )
         if topic_video_df.empty:
             st.warning("주제 데이터가 없습니다.")
         else:
-            st.plotly_chart(build_topic_bar(topic_video_df, topic_name_map), use_container_width=True)
+            st.plotly_chart(build_compare_topic_bar(topic_video_df, channels, topic_name_map), use_container_width=True)
 
 
 def main() -> None:
