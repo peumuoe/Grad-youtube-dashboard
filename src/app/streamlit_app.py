@@ -507,40 +507,6 @@ def apply_page_style() -> None:
             line-height: 1.45;
             margin-bottom: 0.5rem;
         }
-        .compare-channel-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 0.55rem;
-        }
-        .compare-channel-link {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            text-decoration: none;
-            background: rgba(255,255,255,0.88);
-            border: 1px solid rgba(226,232,240,0.95);
-            border-radius: 12px;
-            padding: 7px 9px;
-            transition: all 0.18s ease;
-        }
-        .compare-channel-link:hover {
-            border-color: rgba(20,184,166,0.38);
-            box-shadow: 0 6px 14px rgba(15,23,42,0.06);
-            transform: translateY(-1px);
-        }
-        .compare-channel-link.active {
-            border-color: rgba(20,184,166,0.60);
-            box-shadow: 0 0 0 2px rgba(20,184,166,0.14), 0 8px 16px rgba(15,23,42,0.06);
-            background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(236,253,245,0.96));
-        }
-        .compare-channel-state {
-            margin-left: auto;
-            color: #0d9488;
-            font-size: 0.76rem;
-            font-weight: 850;
-            white-space: nowrap;
-        }
         .compare-tray {
             background: rgba(240,253,250,0.85);
             border: 1px solid rgba(45,212,191,0.22);
@@ -551,6 +517,36 @@ def apply_page_style() -> None:
             font-size: 0.78rem;
             font-weight: 750;
             line-height: 1.5;
+        }
+        .compare-slot-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin: 0.55rem 0 0.6rem 0;
+        }
+        .compare-slot {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 42px;
+            border-radius: 12px;
+            border: 1px dashed rgba(20,184,166,0.34);
+            background: rgba(240,253,250,0.72);
+            padding: 7px 8px;
+            color: #0f766e;
+            font-size: 0.82rem;
+            font-weight: 800;
+        }
+        .compare-slot.empty {
+            color: #94a3b8;
+            border-color: rgba(148,163,184,0.35);
+            background: rgba(248,250,252,0.78);
+        }
+        .compare-slot .sidebar-logo-wrap {
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            flex: 0 0 auto;
         }
         .compare-clear-link {
             display: block;
@@ -564,6 +560,84 @@ def apply_page_style() -> None:
             color: #475569;
             font-size: 0.82rem;
             font-weight: 800;
+        }
+        .compare-mode-hint {
+            color: #64748b;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin: 0.25rem 0 0.45rem 0;
+        }
+        .sidebar-channel-link.compare-pick {
+            border-color: rgba(20,184,166,0.28);
+        }
+        .sidebar-channel-link.compare-pick.active {
+            border-color: rgba(20,184,166,0.62);
+            box-shadow: 0 0 0 2px rgba(20,184,166,0.14), 0 8px 16px rgba(15,23,42,0.06);
+            background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(236,253,245,0.96));
+        }
+        .compare-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            margin-left: auto;
+            padding: 0.18rem 0.45rem;
+            border-radius: 999px;
+            background: rgba(20,184,166,0.10);
+            color: #0f766e;
+            font-size: 0.72rem;
+            font-weight: 850;
+            white-space: nowrap;
+        }
+        .compare-board {
+            background: rgba(255,255,255,0.96);
+            border: 1px solid rgba(226,232,240,0.92);
+            border-radius: 22px;
+            padding: 16px 18px 12px 18px;
+            box-shadow: 0 12px 26px rgba(15,23,42,0.05);
+            margin-bottom: 1rem;
+        }
+        .compare-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 9px;
+        }
+        .compare-table th {
+            color: #64748b;
+            font-size: 0.78rem;
+            text-align: left;
+            padding: 0 10px 2px 10px;
+            white-space: nowrap;
+        }
+        .compare-table td {
+            background: #ffffff;
+            border-top: 1px solid rgba(226,232,240,0.95);
+            border-bottom: 1px solid rgba(226,232,240,0.95);
+            color: #0f172a;
+            font-size: 0.88rem;
+            font-weight: 750;
+            padding: 10px;
+            vertical-align: middle;
+        }
+        .compare-table td:first-child {
+            border-left: 1px solid rgba(226,232,240,0.95);
+            border-radius: 13px 0 0 13px;
+        }
+        .compare-table td:last-child {
+            border-right: 1px solid rgba(226,232,240,0.95);
+            border-radius: 0 13px 13px 0;
+        }
+        .compare-channel-cell {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-width: 140px;
+        }
+        .compare-channel-cell .sidebar-logo-wrap {
+            width: 30px;
+            height: 30px;
+            border-radius: 10px;
+            flex: 0 0 auto;
         }
         .group-head {
             display: flex;
@@ -936,23 +1010,43 @@ def build_sidebar_channel_list_html(
     channels: list[str],
     active_channel: str | None,
     none_option: str = "선택 안 함",
+    compare_mode: bool = False,
+    compare_channels: list[str] | None = None,
 ) -> str:
+    compare_channels = compare_channels or []
+    compare_set = set(compare_channels)
     parts = ['<div class="sidebar-channel-list">']
     for channel in channels:
-        active_class = ' active' if channel == active_channel else ''
-        channel_param = quote(channel.strip())
+        is_active = channel in compare_set if compare_mode else channel == active_channel
+        active_class = ' active' if is_active else ''
+        compare_class = ' compare-pick' if compare_mode else ''
         display_name = display_channel_name(channel)
+        if compare_mode:
+            next_selection = [selected for selected in compare_channels if selected != channel]
+            if channel not in compare_set:
+                next_selection.append(channel)
+            href = compare_href(next_selection)
+            pill = f'<span class="compare-pill">{"담김" if channel in compare_set else "담기"}</span>'
+        else:
+            channel_param = quote(channel.strip())
+            href = f"?selected_channel={channel_param}"
+            pill = ""
         parts.append(
-            f'<a class="sidebar-channel-link{active_class}" href="?selected_channel={channel_param}" target="_self" title="{channel.strip()}">'
+            f'<a class="sidebar-channel-link{compare_class}{active_class}" href="{href}" target="_self" title="{escape(channel.strip())}">'
             f'{sidebar_logo_html(channel)}'
-            f'<span class="sidebar-channel-label">{display_name}</span>'
+            f'<span class="sidebar-channel-label">{escape(display_name)}</span>'
+            f'{pill}'
             '</a>'
         )
     parts.append('</div>')
     none_active = ' active' if active_channel is None else ''
-    parts.append(
-        f'<a class="sidebar-none-button{none_active}" href="?" target="_self" title="{none_option}">{none_option}</a>'
-    )
+    if compare_mode:
+        if compare_channels:
+            parts.append('<a class="sidebar-none-button" href="?" target="_self" title="비교 비우기">비교 비우기</a>')
+    else:
+        parts.append(
+            f'<a class="sidebar-none-button{none_active}" href="?" target="_self" title="{none_option}">{none_option}</a>'
+        )
     return ''.join(parts)
 
 
@@ -976,34 +1070,19 @@ def compare_href(selected_channels: list[str]) -> str:
     return f"?compare={quote('|'.join(selected_channels), safe='')}"
 
 
-def build_compare_channel_picker_html(channels: list[str], selected_channels: list[str]) -> str:
-    selected_set = set(selected_channels)
+def build_compare_dropzone_html(selected_channels: list[str]) -> str:
     parts: list[str] = []
-    if selected_channels:
-        selected_names = ", ".join(display_channel_name(channel) for channel in selected_channels)
+    parts.append('<div class="compare-slot-wrap">')
+    for channel in selected_channels:
         parts.append(
-            '<div class="compare-tray">'
-            f"현재 비교 바구니: {escape(selected_names)}"
-            "</div>"
-        )
-    parts.append('<div class="compare-channel-list">')
-    for channel in channels:
-        is_active = channel in selected_set
-        next_selection = [selected for selected in selected_channels if selected != channel]
-        if not is_active:
-            next_selection.append(channel)
-        active_class = " active" if is_active else ""
-        state_label = "담김" if is_active else "담기"
-        parts.append(
-            f'<a class="compare-channel-link{active_class}" href="{compare_href(next_selection)}" target="_self" title="{escape(display_channel_name(channel))}">'
+            '<div class="compare-slot">'
             f"{sidebar_logo_html(channel)}"
             f'<span class="sidebar-channel-label">{escape(display_channel_name(channel))}</span>'
-            f'<span class="compare-channel-state">{state_label}</span>'
-            "</a>"
+            "</div>"
         )
+    for _ in range(max(0, 2 - len(selected_channels))):
+        parts.append('<div class="compare-slot empty">여기에 채널을 담아 비교</div>')
     parts.append("</div>")
-    if selected_channels:
-        parts.append('<a class="compare-clear-link" href="?" target="_self">비교 바구니 비우기</a>')
     return "".join(parts)
 
 
@@ -1024,31 +1103,50 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
     if query_channel not in ([none_option] + channels):
         query_channel = none_option
 
+    group_channels = parse_compare_channels(st.query_params.get("compare"), channels)
+    if group_channels:
+        st.session_state["compare_mode_enabled"] = True
+
     st.sidebar.markdown("### 분석할 채널")
     active_channel = None if query_channel == none_option else query_channel
     st.sidebar.markdown(
-        build_sidebar_channel_list_html(channels, active_channel, none_option=none_option),
-        unsafe_allow_html=True,
-    )
-
-    group_channels = parse_compare_channels(st.query_params.get("compare"), channels)
-    st.sidebar.markdown(
         """
         <div class="sidebar-group-panel">
-            <div class="sidebar-group-title">채널 묶어서 보기</div>
-            <div class="sidebar-group-caption">아래 로고 카드를 누르면 비교 바구니에 담깁니다. 2개 이상 담으면 합산 화면으로 전환됩니다.</div>
+            <div class="sidebar-group-title">비교 모드</div>
+            <div class="sidebar-group-caption">비교 모드를 켜면 아래 채널 카드가 단일 이동이 아니라 비교칸에 담기는 버튼으로 바뀝니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+    compare_mode = st.sidebar.checkbox(
+        "비교 모드 사용",
+        value=bool(st.session_state.get("compare_mode_enabled", False)),
+        key="compare_mode_enabled",
+    )
+    if compare_mode:
+        st.sidebar.markdown(
+            build_compare_dropzone_html(group_channels),
+            unsafe_allow_html=True,
+        )
+        st.sidebar.markdown(
+            '<div class="compare-mode-hint">아래 채널 카드를 눌러 비교칸에 담거나 다시 눌러 빼세요.</div>',
+            unsafe_allow_html=True,
+        )
+
     st.sidebar.markdown(
-        build_compare_channel_picker_html(channels, group_channels),
+        build_sidebar_channel_list_html(
+            channels,
+            active_channel,
+            none_option=none_option,
+            compare_mode=compare_mode,
+            compare_channels=group_channels,
+        ),
         unsafe_allow_html=True,
     )
-    if len(group_channels) == 1:
+    if compare_mode and len(group_channels) == 1:
         st.sidebar.caption("비교 화면은 채널을 하나 더 담으면 열립니다.")
 
-    return active_channel, group_channels
+    return (None if compare_mode else active_channel), (group_channels if compare_mode else [])
 
 
 def render_empty_state() -> None:
@@ -1175,13 +1273,132 @@ def render_group_header(channels: list[str]) -> None:
         <div class="group-head">
             {group_logo_stack_html(channels)}
             <div>
-                <div class="group-name">선택한 채널 묶음</div>
+                <div class="group-name">선택한 채널 비교</div>
                 <div class="group-sub">{len(channels)}개 채널 · {escape(visible_names)}</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def build_compare_summary_table_html(
+    summary_df: pd.DataFrame,
+    channels: list[str],
+    topic_name_map: dict[str, str],
+) -> str:
+    rows: list[str] = []
+    for channel in channels:
+        channel_df = filter_df(summary_df, channel)
+        if channel_df.empty:
+            continue
+        channel_row = channel_df.iloc[0]
+        frame = str(channel_row.get("dominant_frame", "기타/혼합"))
+        topic = get_topic_display_name(topic_name_map, str(channel_row.get("dominant_topic", "")))
+        reaction = str(channel_row.get("dominant_audience_reaction", "기타/혼합"))
+        direction = classify_direction_display(float(channel_row.get("ideology_relative_score", 0.0)))
+        video_count = int(float(channel_row.get("video_count", 0) or 0))
+        rows.append(
+            "<tr>"
+            f'<td><div class="compare-channel-cell">{sidebar_logo_html(channel)}<span>{escape(display_channel_name(channel))}</span></div></td>'
+            f"<td>{escape(frame)}</td>"
+            f"<td>{escape(topic)}</td>"
+            f"<td>{escape(reaction)}</td>"
+            f"<td>{direction}</td>"
+            f"<td>{video_count:,}</td>"
+            "</tr>"
+        )
+    if not rows:
+        return ""
+    return (
+        '<div class="compare-board">'
+        '<table class="compare-table">'
+        "<thead><tr><th>채널</th><th>보도 관점</th><th>대표 주제</th><th>댓글 반응</th><th>해석 방향</th><th>영상 수</th></tr></thead>"
+        "<tbody>"
+        + "".join(rows)
+        + "</tbody></table></div>"
+    )
+
+
+def build_compare_distribution_bar(
+    dist_df: pd.DataFrame,
+    channels: list[str],
+    category_col: str,
+    share_col: str,
+    color_map: dict[str, str],
+    category_order: list[str],
+) -> go.Figure:
+    chart_df = dist_df.copy()
+    if chart_df.empty:
+        return go.Figure()
+    chart_df = chart_df[chart_df["channel_name"].isin(channels)].copy()
+    chart_df[share_col] = pd.to_numeric(chart_df[share_col], errors="coerce").fillna(0.0) * 100
+    chart_df["channel_display"] = chart_df["channel_name"].map(display_channel_name)
+    fig = go.Figure()
+    for category in category_order:
+        category_df = chart_df[chart_df[category_col] == category].copy()
+        if category_df.empty:
+            continue
+        category_df = category_df.set_index("channel_name").reindex(channels).reset_index()
+        category_df["channel_display"] = category_df["channel_name"].map(display_channel_name)
+        category_df[share_col] = pd.to_numeric(category_df[share_col], errors="coerce").fillna(0.0)
+        fig.add_trace(
+            go.Bar(
+                x=category_df[share_col],
+                y=category_df["channel_display"],
+                name=category,
+                orientation="h",
+                marker=dict(color=color_map.get(category, "#CBD5E1")),
+                hovertemplate="%{y}<br>" + category + ": %{x:.1f}%<extra></extra>",
+            )
+        )
+    fig.update_layout(
+        barmode="stack",
+        height=max(270, 46 * len(channels) + 80),
+        margin=dict(l=92, r=20, t=10, b=28),
+        xaxis_title="비중(%)",
+        yaxis_title="",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(range=[0, 100], gridcolor="rgba(148,163,184,0.18)"),
+        yaxis=dict(autorange="reversed"),
+    )
+    return fig
+
+
+def build_compare_direction_bar(summary_df: pd.DataFrame, channels: list[str]) -> go.Figure:
+    chart_df = filter_df_multi(summary_df, channels).copy()
+    if chart_df.empty:
+        return go.Figure()
+    chart_df["channel_display"] = chart_df["channel_name"].map(display_channel_name)
+    chart_df["score"] = pd.to_numeric(chart_df["ideology_relative_score"], errors="coerce").fillna(0.0)
+    chart_df = chart_df.set_index("channel_name").reindex(channels).reset_index()
+    chart_df["channel_display"] = chart_df["channel_name"].map(display_channel_name)
+    chart_df["score"] = pd.to_numeric(chart_df["score"], errors="coerce").fillna(0.0)
+    colors = ["#4338CA" if score < -0.002 else "#E11D48" if score > 0.002 else "#64748B" for score in chart_df["score"]]
+    fig = go.Figure(
+        go.Bar(
+            x=chart_df["score"],
+            y=chart_df["channel_display"],
+            orientation="h",
+            marker=dict(color=colors),
+            text=[f"{score:.3f}" for score in chart_df["score"]],
+            textposition="outside",
+            hovertemplate="%{y}<br>점수 %{x:.3f}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        height=max(260, 42 * len(channels) + 60),
+        margin=dict(l=92, r=35, t=10, b=28),
+        xaxis_title="상대적 기울기 점수",
+        yaxis_title="",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(zeroline=True, zerolinecolor="#94A3B8", gridcolor="rgba(148,163,184,0.18)"),
+        yaxis=dict(autorange="reversed"),
+    )
+    return fig
 
 
 def build_topic_name_map(topic_summary_df: pd.DataFrame) -> dict[str, str]:
@@ -2927,49 +3144,31 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
 def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -> None:
     summary_df = filter_df_multi(data["summary"], channels)
     topic_video_df = filter_df_multi(data["topic_video"], channels)
-    topic_video_script_df = filter_df_multi(data["topic_video_script"], channels)
-    frame_dist_df = aggregate_distribution(
-        filter_df_multi(data["frame_dist"], channels),
-        category_col="primary_frame",
-        count_col="video_count",
-        share_col="frame_share_within_channel",
-    )
-    audience_channel_df = aggregate_distribution(
-        filter_df_multi(data["audience_channel"], channels),
-        category_col="primary_reaction",
-        count_col="comment_count",
-        share_col="reaction_share_within_channel",
-    )
+    frame_dist_df = filter_df_multi(data["frame_dist"], channels)
+    audience_channel_df = filter_df_multi(data["audience_channel"], channels)
 
     if len(channels) < 2:
         render_empty_state()
         return
     if summary_df.empty:
-        st.warning("선택한 채널 묶음에 표시할 데이터가 없습니다.")
+        st.warning("선택한 채널 비교에 표시할 데이터가 없습니다.")
         return
 
     topic_name_map = build_topic_name_map(data["topic_summary"])
-    topic_name_map_script = build_topic_name_map(data["topic_summary_script"])
-    ideology_score = weighted_average(summary_df, "ideology_relative_score", "video_count")
-    dominant_frame = top_value(frame_dist_df, "primary_frame", "frame_share_within_channel")
-    dominant_reaction = top_value(audience_channel_df, "primary_reaction", "reaction_share_within_channel")
-
-    if topic_video_df.empty:
-        dominant_topic_name = "데이터 없음"
-    else:
-        dominant_topic_label = (
-            topic_video_df.groupby("topic_label")["video_id"].count().sort_values(ascending=False).index[0]
-        )
-        dominant_topic_name = get_topic_display_name(topic_name_map, str(dominant_topic_label))
 
     render_group_header(channels)
     st.markdown('<div style="height: 0.45rem;"></div>', unsafe_allow_html=True)
 
-    col1, col2, col3, col4 = st.columns(4)
-    metric_card(col1, "대표 보도 관점", dominant_frame, FRAME_DESCRIPTION_MAP.get(dominant_frame, ""))
-    metric_card(col2, "대표 주제", dominant_topic_name, "선택한 채널 묶음에서 가장 자주 등장한 이슈 묶음")
-    metric_card(col3, "대표 댓글 반응", dominant_reaction, REACTION_DESCRIPTION_MAP.get(dominant_reaction, ""))
-    metric_card(col4, "해석 방향", classify_direction_display(ideology_score), direction_explainer_display(ideology_score))
+    section_header(
+        "비교 요약",
+        "선택한 채널들이 같은 이슈를 어떤 관점·주제·댓글 반응·해석 방향으로 다르게 보여주는지 비교합니다.",
+        "이 화면은 여러 채널을 하나로 합산하지 않고, 채널별 값을 나란히 놓아 차이를 읽기 위한 비교 화면입니다.",
+    )
+    summary_table_html = build_compare_summary_table_html(summary_df, channels, topic_name_map)
+    if summary_table_html:
+        st.markdown(summary_table_html, unsafe_allow_html=True)
+    else:
+        st.warning("비교 요약표를 만들 수 없습니다.")
 
     st.markdown("")
     top_left, top_right = st.columns(2, gap="large")
@@ -2977,21 +3176,31 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
     with top_left:
         section_header(
             "해석 방향",
-            direction_short_caption_display(ideology_score),
-            "선택한 채널들의 이란 전쟁 관련 보도에서 드러난 표현 단서를 영상 수 기준으로 묶어 본 상대적 위치입니다.",
+            "채널별 상대적 기울기 점수를 나란히 비교합니다.",
+            "0을 기준으로 왼쪽은 진보 쪽, 오른쪽은 보수 쪽 표현 단서가 상대적으로 더 많이 나타난 경우입니다.",
         )
-        st.markdown(build_direction_markup_display(ideology_score), unsafe_allow_html=True)
+        st.plotly_chart(build_compare_direction_bar(data["summary"], channels), use_container_width=True)
 
     with top_right:
         section_header(
             "보도 관점",
-            f"선택한 채널 묶음에서 가장 자주 등장한 관점은 {dominant_frame}입니다.",
-            "각 채널의 프레임 건수를 합산한 뒤 전체 비율을 다시 계산한 결과입니다.",
+            "안보·군사, 경제·에너지 등 프레임 비중을 채널별로 비교합니다.",
+            "막대 하나가 한 채널이며, 색상 구간은 해당 채널 안에서 각 보도 관점이 차지하는 비중입니다.",
         )
         if frame_dist_df.empty:
             st.warning("프레임 데이터가 없습니다.")
         else:
-            st.plotly_chart(build_frame_donut(frame_dist_df), use_container_width=True)
+            st.plotly_chart(
+                build_compare_distribution_bar(
+                    frame_dist_df,
+                    channels,
+                    category_col="primary_frame",
+                    share_col="frame_share_within_channel",
+                    color_map=FRAME_COLOR_MAP,
+                    category_order=FRAME_ORDER,
+                ),
+                use_container_width=True,
+            )
 
     st.markdown("")
     bottom_left, bottom_right = st.columns(2, gap="large")
@@ -2999,90 +3208,34 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
     with bottom_left:
         section_header(
             "시청자 반응",
-            f"선택한 채널 묶음에서 가장 많이 나타난 반응은 {dominant_reaction}입니다.",
-            "선택한 채널들의 댓글 반응 건수를 합산해 다시 비율을 계산했습니다.",
+            "댓글 반응 유형의 비중을 채널별로 비교합니다.",
+            "댓글은 채널 성향 판정용이 아니라, 각 영상 주변에서 드러난 수용자 반응의 차이를 보기 위한 자료입니다.",
         )
         if audience_channel_df.empty:
             st.warning("댓글 반응 데이터가 없습니다.")
         else:
-            st.plotly_chart(build_reaction_donut(audience_channel_df), use_container_width=True)
+            st.plotly_chart(
+                build_compare_distribution_bar(
+                    audience_channel_df,
+                    channels,
+                    category_col="primary_reaction",
+                    share_col="reaction_share_within_channel",
+                    color_map=REACTION_COLOR_MAP,
+                    category_order=REACTION_ORDER,
+                ),
+                use_container_width=True,
+            )
 
     with bottom_right:
         section_header(
             "제목·설명 기준 주제",
-            f"가장 많이 보인 주제는 {dominant_topic_name}입니다.",
-            "선택한 채널들의 제목·설명 기반 토픽 결과를 합산했습니다.",
+            "선택한 채널 전체에서 많이 등장한 제목·설명 주제를 함께 봅니다.",
+            "요약표에서는 채널별 대표 주제를, 아래 그래프에서는 선택 채널 전체의 주요 주제 흐름을 확인합니다.",
         )
         if topic_video_df.empty:
             st.warning("주제 데이터가 없습니다.")
         else:
             st.plotly_chart(build_topic_bar(topic_video_df, topic_name_map), use_container_width=True)
-
-    st.markdown("")
-    extra_left, extra_right = st.columns(2, gap="large")
-
-    with extra_left:
-        section_header(
-            "자주 나온 핵심 단어",
-            "선택한 채널 묶음의 제목·설명에서 반복해서 많이 등장한 단어입니다.",
-            "채널별 텍스트를 합쳐 불필요한 안내 문구와 조사성 표현을 정리한 뒤 집계했습니다.",
-        )
-        if topic_video_df.empty:
-            st.warning("단어 분석 데이터가 없습니다.")
-        else:
-            render_treemap_component(build_keyword_treemap_markup(topic_video_df))
-
-    with extra_right:
-        section_header(
-            "날짜별 보도량",
-            "선택한 채널 묶음이 이슈를 어느 시기에 더 많이 다뤘는지 보여줍니다.",
-            "선택한 채널들의 영상 업로드 수를 날짜별로 합산했습니다.",
-        )
-        if topic_video_df.empty:
-            st.warning("날짜별 집계 데이터가 없습니다.")
-        else:
-            st.plotly_chart(build_volume_timeline(topic_video_df), use_container_width=True)
-
-    st.markdown("")
-    render_subsection_header(
-        "스크립트 기반 분석",
-        "아래 결과는 제목·설명이 아니라 실제 영상 스크립트 본문을 기준으로 선택한 채널 묶음을 합산한 분석입니다.",
-    )
-
-    if topic_video_script_df.empty:
-        render_status_card(
-            "선택한 채널 묶음에는 현재 스크립트 기반 분석 대상이 없습니다",
-            "수집된 스크립트가 없거나 분석에 사용할 만큼 정리된 스크립트가 없는 상태입니다.",
-        )
-        return
-
-    script_left, script_right = st.columns(2, gap="large")
-
-    with script_left:
-        dominant_script_topic = (
-            topic_video_script_df.groupby("topic_label")["video_id"].count().sort_values(ascending=False).index[0]
-        )
-        section_header(
-            "스크립트 기준 주제",
-            f"스크립트 본문 기준으로는 {get_topic_display_name(topic_name_map_script, str(dominant_script_topic))} 주제가 가장 많이 보입니다.",
-            "선택한 채널들의 실제 영상 스크립트 본문을 합산해 만든 주제 분석입니다.",
-        )
-        st.plotly_chart(build_script_topic_bar(topic_video_script_df, topic_name_map_script), use_container_width=True)
-
-    with script_right:
-        section_header(
-            "스크립트 핵심 단어",
-            "선택한 채널 묶음의 영상 본문 스크립트에서 반복해서 많이 등장한 표현입니다.",
-            "사전 계산된 스크립트 키워드 표를 우선 사용하고, 없을 때만 본문에서 다시 집계합니다.",
-        )
-        script_keyword_markup = build_group_script_keyword_treemap_markup(channels, topic_video_script_df)
-        script_keyword_fig = build_script_keyword_bar_chart(topic_video_script_df)
-        if render_treemap_component(script_keyword_markup):
-            pass
-        elif script_keyword_fig.data:
-            st.plotly_chart(script_keyword_fig, use_container_width=True)
-        else:
-            st.info("현재 스크립트 핵심 단어를 만들 수 없어 이 영역을 비워두었습니다.")
 
 
 def main() -> None:
