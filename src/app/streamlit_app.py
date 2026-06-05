@@ -1328,34 +1328,43 @@ def get_channel_dominant_script_topic(
     channel: str,
     topic_name_map_script: dict[str, str],
 ) -> str:
-    channel_df = filter_df(topic_video_script_df, channel)
-    if channel_df.empty or "topic_label" not in channel_df.columns:
+    try:
+        channel_df = filter_df(topic_video_script_df, channel)
+        if channel_df.empty or "topic_label" not in channel_df.columns:
+            return "데이터 없음"
+        topic_label = channel_df.groupby("topic_label")["video_id"].count().sort_values(ascending=False).index[0]
+        return get_topic_display_name(topic_name_map_script, str(topic_label))
+    except Exception:
         return "데이터 없음"
-    topic_label = channel_df.groupby("topic_label")["video_id"].count().sort_values(ascending=False).index[0]
-    return get_topic_display_name(topic_name_map_script, str(topic_label))
 
 
 def get_channel_top_title_keyword(topic_video_df: pd.DataFrame, channel: str) -> str:
-    channel_df = filter_df(topic_video_df, channel)
-    if channel_df.empty:
+    try:
+        channel_df = filter_df(topic_video_df, channel)
+        if channel_df.empty:
+            return "데이터 없음"
+        text_series = (
+            channel_df.get("topic_text_cleaned", pd.Series(dtype=str))
+            .fillna("")
+            .astype(str)
+            .apply(strip_boilerplate)
+        )
+        token_counter = extract_keyword_counter(text_series)
+        return token_counter.most_common(1)[0][0] if token_counter else "데이터 없음"
+    except Exception:
         return "데이터 없음"
-    text_series = (
-        channel_df.get("topic_text_cleaned", pd.Series(dtype=str))
-        .fillna("")
-        .astype(str)
-        .apply(strip_boilerplate)
-    )
-    token_counter = extract_keyword_counter(text_series)
-    return token_counter.most_common(1)[0][0] if token_counter else "데이터 없음"
 
 
 def get_channel_top_script_keyword(channel: str, topic_video_script_df: pd.DataFrame) -> str:
-    keyword_rows = get_precomputed_script_keyword_rows(channel)
-    if not keyword_rows:
-        keyword_rows = _extract_script_keyword_rows(filter_df(topic_video_script_df, channel), limit=1)
-    if not keyword_rows:
+    try:
+        keyword_rows = get_precomputed_script_keyword_rows(channel)
+        if not keyword_rows:
+            keyword_rows = _extract_script_keyword_rows(filter_df(topic_video_script_df, channel), limit=1)
+        if not keyword_rows:
+            return "데이터 없음"
+        return str(keyword_rows[0].get("keyword", "데이터 없음"))
+    except Exception:
         return "데이터 없음"
-    return str(keyword_rows[0].get("keyword", "데이터 없음"))
 
 
 def build_compare_summary_table_html(
@@ -1400,7 +1409,7 @@ def build_compare_summary_table_html(
     return (
         '<div class="compare-board">'
         '<table class="compare-table">'
-        "<thead><tr><th>채널</th><th>보도 관점</th><th>제목·설명 주제</th><th>스크립트 주제</th><th>댓글 반응</th><th>해석 방향</th><th>제목 핵심어</th><th>스크립트 핵심어</th><th>영상 수</th><th>댓글 수</th></tr></thead>"
+        "<thead><tr><th>채널</th><th>보도 관점</th><th>메타데이터 주제</th><th>스크립트 주제</th><th>댓글 반응</th><th>해석 방향</th><th>메타데이터 핵심어</th><th>스크립트 핵심어</th><th>영상 수</th><th>댓글 수</th></tr></thead>"
         "<tbody>"
         + "".join(rows)
         + "</tbody></table></div>"
@@ -3246,9 +3255,9 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
 
     with bottom_right:
         section_header(
-            "제목·설명 기준 주제",
+            "메타데이터 기준 주제",
             f"가장 많이 보인 주제는 {get_topic_display_name(topic_name_map, str(channel_row.get('dominant_topic', '')))}입니다.",
-            "이 결과는 영상 본문 전체가 아니라 제목과 설명 텍스트를 묶어 분석한 결과입니다. 즉, 이 채널이 어떤 이슈를 어떤 이름으로 가장 자주 소개했는지 보여줍니다.",
+            "이 결과는 영상 본문 전체가 아니라 제목·설명 등 메타데이터 텍스트를 묶어 분석한 결과입니다. 즉, 이 채널이 어떤 이슈를 어떤 이름으로 가장 자주 소개했는지 보여줍니다.",
         )
         if topic_video_df.empty:
             st.warning("주제 데이터가 없습니다.")
@@ -3283,7 +3292,7 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
     st.markdown("")
     render_subsection_header(
         "스크립트 기반 분석",
-        "아래 결과는 제목·설명이 아니라 실제 영상 스크립트 본문을 기준으로 만든 분석입니다.",
+        "아래 결과는 메타데이터가 아니라 실제 영상 스크립트 본문을 기준으로 만든 분석입니다.",
     )
 
     script_doc_count = len(topic_video_script_df)
@@ -3311,7 +3320,7 @@ def render_dashboard(data: dict[str, pd.DataFrame], channel: str) -> None:
         section_header(
             "스크립트 핵심 단어",
             "영상 본문 스크립트에서 반복해서 많이 등장한 표현입니다.",
-            "제목·설명 문구가 아니라 실제 스크립트 본문에서 나온 단어 빈도를 집계한 결과입니다.",
+            "메타데이터 문구가 아니라 실제 스크립트 본문에서 나온 단어 빈도를 집계한 결과입니다.",
         )
         script_keyword_markup = build_script_keyword_treemap_markup_cached(channel)
         script_keyword_fig = build_script_keyword_bar_chart(topic_video_script_df)
@@ -3420,8 +3429,8 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
 
     with bottom_right:
         section_header(
-            "제목·설명 기준 주제",
-            "주요 제목·설명 주제가 채널별로 얼마나 다르게 나타나는지 비교합니다.",
+            "메타데이터 기준 주제",
+            "주요 메타데이터 주제가 채널별로 얼마나 다르게 나타나는지 비교합니다.",
             "같은 주제 안에서 채널별 영상 수를 나란히 놓아, 어떤 채널이 어떤 주제를 더 많이 다뤘는지 확인합니다.",
         )
         if topic_video_df.empty:
@@ -3436,7 +3445,7 @@ def render_group_dashboard(data: dict[str, pd.DataFrame], channels: list[str]) -
         section_header(
             "스크립트 기준 주제",
             "실제 영상 스크립트 본문에서 많이 나타난 주제를 채널별로 비교합니다.",
-            "제목·설명보다 실제 보도 본문에 가까운 텍스트를 기준으로 비교합니다.",
+            "메타데이터보다 실제 보도 본문에 가까운 텍스트를 기준으로 비교합니다.",
         )
         if topic_video_script_df.empty:
             st.warning("스크립트 주제 데이터가 없습니다.")
