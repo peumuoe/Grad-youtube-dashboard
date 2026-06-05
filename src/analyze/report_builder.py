@@ -12,6 +12,11 @@ def build_channel_analysis_summary(
     audience_distribution_df: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """Build one channel-level summary table for reporting."""
+    frame_distribution_df = _normalize_channel_names(frame_distribution_df)
+    ideology_df = _normalize_channel_names(ideology_df)
+    topic_distribution_df = _normalize_channel_names(topic_distribution_df)
+    audience_distribution_df = _normalize_channel_names(audience_distribution_df)
+
     dominant_frame_df = (
         frame_distribution_df.sort_values(
             ["channel_name", "video_count", "primary_frame"],
@@ -90,8 +95,18 @@ def build_channel_analysis_summary(
     return summary_df
 
 
+def _normalize_channel_names(df: pd.DataFrame | None) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame() if df is None else df.copy()
+    cleaned_df = df.copy()
+    if "channel_name" in cleaned_df.columns:
+        cleaned_df["channel_name"] = cleaned_df["channel_name"].fillna("").astype(str).str.strip()
+    return cleaned_df
+
+
 def build_frame_wide_table(frame_distribution_df: pd.DataFrame) -> pd.DataFrame:
     """Build a wide table of frame shares by channel."""
+    frame_distribution_df = _normalize_channel_names(frame_distribution_df)
     pivot_df = frame_distribution_df.pivot_table(
         index="channel_name",
         columns="primary_frame",
@@ -105,6 +120,7 @@ def build_frame_wide_table(frame_distribution_df: pd.DataFrame) -> pd.DataFrame:
 
 def build_topic_wide_table(topic_distribution_df: pd.DataFrame) -> pd.DataFrame:
     """Build a wide table of top topic shares by channel."""
+    topic_distribution_df = _normalize_channel_names(topic_distribution_df)
     pivot_df = topic_distribution_df.pivot_table(
         index="channel_name",
         columns="topic_label",
@@ -118,6 +134,7 @@ def build_topic_wide_table(topic_distribution_df: pd.DataFrame) -> pd.DataFrame:
 
 def build_audience_wide_table(audience_distribution_df: pd.DataFrame) -> pd.DataFrame:
     """Build a wide table of audience reaction shares by channel."""
+    audience_distribution_df = _normalize_channel_names(audience_distribution_df)
     pivot_df = audience_distribution_df.pivot_table(
         index="channel_name",
         columns="primary_reaction",
