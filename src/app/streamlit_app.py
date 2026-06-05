@@ -507,6 +507,64 @@ def apply_page_style() -> None:
             line-height: 1.45;
             margin-bottom: 0.5rem;
         }
+        .compare-channel-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 0.55rem;
+        }
+        .compare-channel-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid rgba(226,232,240,0.95);
+            border-radius: 12px;
+            padding: 7px 9px;
+            transition: all 0.18s ease;
+        }
+        .compare-channel-link:hover {
+            border-color: rgba(20,184,166,0.38);
+            box-shadow: 0 6px 14px rgba(15,23,42,0.06);
+            transform: translateY(-1px);
+        }
+        .compare-channel-link.active {
+            border-color: rgba(20,184,166,0.60);
+            box-shadow: 0 0 0 2px rgba(20,184,166,0.14), 0 8px 16px rgba(15,23,42,0.06);
+            background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(236,253,245,0.96));
+        }
+        .compare-channel-state {
+            margin-left: auto;
+            color: #0d9488;
+            font-size: 0.76rem;
+            font-weight: 850;
+            white-space: nowrap;
+        }
+        .compare-tray {
+            background: rgba(240,253,250,0.85);
+            border: 1px solid rgba(45,212,191,0.22);
+            border-radius: 12px;
+            padding: 9px 10px;
+            margin: 0.5rem 0 0.55rem 0;
+            color: #0f766e;
+            font-size: 0.78rem;
+            font-weight: 750;
+            line-height: 1.5;
+        }
+        .compare-clear-link {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid rgba(226,232,240,0.95);
+            border-radius: 12px;
+            padding: 7px 10px;
+            margin: 0.4rem 0 0.25rem 0;
+            color: #475569;
+            font-size: 0.82rem;
+            font-weight: 800;
+        }
         .group-head {
             display: flex;
             align-items: center;
@@ -898,6 +956,57 @@ def build_sidebar_channel_list_html(
     return ''.join(parts)
 
 
+def parse_compare_channels(raw_value: object, channels: list[str]) -> list[str]:
+    if isinstance(raw_value, list):
+        raw_text = raw_value[0] if raw_value else ""
+    else:
+        raw_text = str(raw_value or "")
+    allowed = set(channels)
+    selected: list[str] = []
+    for channel in raw_text.split("|"):
+        normalized = normalize_channel_name(channel)
+        if normalized in allowed and normalized not in selected:
+            selected.append(normalized)
+    return selected
+
+
+def compare_href(selected_channels: list[str]) -> str:
+    if not selected_channels:
+        return "?"
+    return f"?compare={quote('|'.join(selected_channels), safe='')}"
+
+
+def build_compare_channel_picker_html(channels: list[str], selected_channels: list[str]) -> str:
+    selected_set = set(selected_channels)
+    parts: list[str] = []
+    if selected_channels:
+        selected_names = ", ".join(display_channel_name(channel) for channel in selected_channels)
+        parts.append(
+            '<div class="compare-tray">'
+            f"현재 비교 바구니: {escape(selected_names)}"
+            "</div>"
+        )
+    parts.append('<div class="compare-channel-list">')
+    for channel in channels:
+        is_active = channel in selected_set
+        next_selection = [selected for selected in selected_channels if selected != channel]
+        if not is_active:
+            next_selection.append(channel)
+        active_class = " active" if is_active else ""
+        state_label = "담김" if is_active else "담기"
+        parts.append(
+            f'<a class="compare-channel-link{active_class}" href="{compare_href(next_selection)}" target="_self" title="{escape(display_channel_name(channel))}">'
+            f"{sidebar_logo_html(channel)}"
+            f'<span class="sidebar-channel-label">{escape(display_channel_name(channel))}</span>'
+            f'<span class="compare-channel-state">{state_label}</span>'
+            "</a>"
+        )
+    parts.append("</div>")
+    if selected_channels:
+        parts.append('<a class="compare-clear-link" href="?" target="_self">비교 바구니 비우기</a>')
+    return "".join(parts)
+
+
 
 
 def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
@@ -922,27 +1031,22 @@ def render_sidebar(summary_df: pd.DataFrame) -> tuple[str | None, list[str]]:
         unsafe_allow_html=True,
     )
 
+    group_channels = parse_compare_channels(st.query_params.get("compare"), channels)
     st.sidebar.markdown(
         """
         <div class="sidebar-group-panel">
             <div class="sidebar-group-title">채널 묶어서 보기</div>
-            <div class="sidebar-group-caption">비슷한 성향이나 유형의 채널을 2개 이상 선택하면 합산 화면으로 볼 수 있습니다.</div>
+            <div class="sidebar-group-caption">아래 로고 카드를 누르면 비교 바구니에 담깁니다. 2개 이상 담으면 합산 화면으로 전환됩니다.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    group_enabled = st.sidebar.checkbox("복수 선택 사용", value=False, key="group_mode_enabled")
-    group_channels: list[str] = []
-    if group_enabled:
-        group_channels = st.sidebar.multiselect(
-            "묶을 채널",
-            channels,
-            default=[],
-            format_func=display_channel_name,
-            key="group_channel_selection",
-        )
-        if len(group_channels) == 1:
-            st.sidebar.caption("묶음 보기는 2개 이상 선택하면 적용됩니다.")
+    st.sidebar.markdown(
+        build_compare_channel_picker_html(channels, group_channels),
+        unsafe_allow_html=True,
+    )
+    if len(group_channels) == 1:
+        st.sidebar.caption("비교 화면은 채널을 하나 더 담으면 열립니다.")
 
     return active_channel, group_channels
 
