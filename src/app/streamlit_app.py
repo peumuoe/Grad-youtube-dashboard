@@ -638,6 +638,7 @@ def apply_page_style() -> None:
         }
         .compare-table {
             width: 100%;
+            min-width: 1320px;
             border-collapse: separate;
             border-spacing: 0 9px;
         }
@@ -657,6 +658,26 @@ def apply_page_style() -> None:
             font-weight: 750;
             padding: 10px;
             vertical-align: middle;
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+        .compare-table .compare-col-channel { width: 170px; }
+        .compare-table .compare-col-frame { width: 110px; }
+        .compare-table .compare-col-topic { width: 170px; }
+        .compare-table .compare-col-script-topic { width: 170px; }
+        .compare-table .compare-col-reaction { width: 110px; }
+        .compare-table .compare-col-direction { width: 150px; }
+        .compare-table .compare-col-keyword { width: 120px; }
+        .compare-table .compare-col-count { width: 82px; text-align: right; }
+        .compare-cell-lines {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+            line-height: 1.22;
+            white-space: nowrap;
+        }
+        .compare-cell-lines .soft-line {
+            display: block;
         }
         .compare-table td:first-child {
             border-left: 1px solid rgba(226,232,240,0.95);
@@ -1501,6 +1522,44 @@ def get_channel_top_script_keyword(channel: str, topic_video_script_df: pd.DataF
         return "데이터 없음"
 
 
+def compare_cell_lines_html(value: object, kind: str = "default") -> str:
+    text = str(value or "").strip()
+    if not text or text.lower() in {"nan", "none", "nat"}:
+        text = "데이터 없음"
+
+    direction_breaks = {
+        "진보 쪽으로 기울어짐": ["진보 쪽으로", "기울어짐"],
+        "보수 쪽으로 기울어짐": ["보수 쪽으로", "기울어짐"],
+        "중간이지만 진보 쪽에 더 가까움": ["중간이지만", "진보 쪽에 더 가까움"],
+        "중간이지만 보수 쪽에 더 가까움": ["중간이지만", "보수 쪽에 더 가까움"],
+        "중간에 매우 가까움": ["중간에", "매우 가까움"],
+    }
+    if kind == "direction" and text in direction_breaks:
+        lines = direction_breaks[text]
+    elif kind == "reaction" and "/" in text:
+        lines = [part.strip() for part in text.split("/") if part.strip()]
+    elif kind == "topic":
+        normalized = text.replace("·", "· ").replace("/", "/ ")
+        lines = [normalized]
+        for separator in (" 군사 ", " 대응", " 충돌", " 수송", " 위기", " 주제"):
+            if separator in normalized and len(normalized) > 12:
+                left, right = normalized.split(separator, 1)
+                lines = [left.strip(), f"{separator.strip()} {right}".strip()]
+                break
+        if len(lines) == 1 and " " in normalized and len(normalized) > 14:
+            words = normalized.split()
+            midpoint = max(1, len(words) // 2)
+            lines = [" ".join(words[:midpoint]), " ".join(words[midpoint:])]
+    else:
+        lines = [text]
+
+    return (
+        '<span class="compare-cell-lines">'
+        + "".join(f'<span class="soft-line">{escape(line)}</span>' for line in lines if line)
+        + "</span>"
+    )
+
+
 def build_compare_summary_table_html(
     summary_df: pd.DataFrame,
     topic_video_df: pd.DataFrame,
@@ -1527,15 +1586,15 @@ def build_compare_summary_table_html(
         rows.append(
             "<tr>"
             f'<td><div class="compare-channel-cell">{sidebar_logo_html(channel)}<span>{escape(display_channel_name(channel))}</span></div></td>'
-            f"<td>{escape(frame)}</td>"
-            f"<td>{escape(topic)}</td>"
-            f"<td>{escape(script_topic)}</td>"
-            f"<td>{escape(reaction)}</td>"
-            f"<td>{direction}</td>"
-            f"<td>{escape(title_keyword)}</td>"
-            f"<td>{escape(script_keyword)}</td>"
-            f"<td>{video_count:,}</td>"
-            f"<td>{comment_count:,}</td>"
+            f"<td>{compare_cell_lines_html(frame)}</td>"
+            f"<td>{compare_cell_lines_html(topic, 'topic')}</td>"
+            f"<td>{compare_cell_lines_html(script_topic, 'topic')}</td>"
+            f"<td>{compare_cell_lines_html(reaction, 'reaction')}</td>"
+            f"<td>{compare_cell_lines_html(direction, 'direction')}</td>"
+            f"<td>{compare_cell_lines_html(title_keyword)}</td>"
+            f"<td>{compare_cell_lines_html(script_keyword)}</td>"
+            f'<td class="compare-col-count">{video_count:,}</td>'
+            f'<td class="compare-col-count">{comment_count:,}</td>'
             "</tr>"
         )
     if not rows:
@@ -1543,6 +1602,18 @@ def build_compare_summary_table_html(
     return (
         '<div class="compare-board">'
         '<table class="compare-table">'
+        "<colgroup>"
+        '<col class="compare-col-channel">'
+        '<col class="compare-col-frame">'
+        '<col class="compare-col-topic">'
+        '<col class="compare-col-script-topic">'
+        '<col class="compare-col-reaction">'
+        '<col class="compare-col-direction">'
+        '<col class="compare-col-keyword">'
+        '<col class="compare-col-keyword">'
+        '<col class="compare-col-count">'
+        '<col class="compare-col-count">'
+        "</colgroup>"
         "<thead><tr><th>채널</th><th>보도 관점</th><th>메타데이터 주제</th><th>스크립트 주제</th><th>댓글 반응</th><th>해석 방향</th><th>메타데이터 핵심어</th><th>스크립트 핵심어</th><th>영상 수</th><th>댓글 수</th></tr></thead>"
         "<tbody>"
         + "".join(rows)
