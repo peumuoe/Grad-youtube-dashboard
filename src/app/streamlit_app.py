@@ -1075,7 +1075,7 @@ def build_sidebar_channel_list_html(
         is_active = channel == active_channel
         active_class = ' active' if is_active else ''
         display_name = display_channel_name(channel)
-        channel_href = selected_channel_href(channel, compare_channels if compare_mode else None)
+        channel_href = selected_channel_href(channel)
         if compare_mode:
             next_selection = [selected for selected in compare_channels if selected != channel]
             if channel not in compare_set:
@@ -1127,11 +1127,10 @@ def parse_compare_channels(raw_value: object, channels: list[str]) -> list[str]:
     return selected
 
 
-def selected_channel_href(channel: str, compare_channels: list[str] | None = None) -> str:
-    href = f"?selected_channel={quote(channel.strip())}"
-    if compare_channels:
-        href += f"&compare={quote('|'.join(compare_channels), safe='')}"
-    return href
+def selected_channel_href(channel: str | None) -> str:
+    if not channel:
+        return "?"
+    return f"?selected_channel={quote(channel.strip())}"
 
 
 def compare_href(selected_channels: list[str], active_channel: str | None = None) -> str:
