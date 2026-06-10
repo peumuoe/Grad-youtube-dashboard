@@ -999,6 +999,160 @@ def apply_page_style() -> None:
         div[data-testid="stVerticalBlock"] > div:has(> div.panel-shell) {
             margin-bottom: 0.2rem;
         }
+        @media (max-width: 640px) {
+            .block-container {
+                padding: 2.35rem 0.8rem 1.4rem 0.8rem;
+            }
+            .hero {
+                border-radius: 20px;
+                padding: 18px 18px 16px 18px;
+                margin-bottom: 0.85rem;
+            }
+            .hero-title {
+                font-size: 1.58rem;
+                line-height: 1.16;
+                letter-spacing: -0.045em;
+                word-break: keep-all;
+                overflow-wrap: normal;
+            }
+            .hero-sub {
+                font-size: 0.86rem;
+                line-height: 1.5;
+            }
+            .channel-head {
+                gap: 10px;
+                margin-bottom: 0.45rem;
+            }
+            .logo-dot {
+                width: 46px;
+                height: 46px;
+                border-radius: 15px;
+                font-size: 0.88rem;
+                flex: 0 0 auto;
+            }
+            .channel-name {
+                font-size: 1.45rem;
+                line-height: 1.12;
+                letter-spacing: -0.035em;
+            }
+            .badge {
+                padding: 0.22rem 0.54rem;
+                font-size: 0.72rem;
+            }
+            .kpi-card {
+                min-height: 88px;
+                padding: 13px 14px 12px 14px;
+                border-radius: 17px;
+            }
+            .kpi-label {
+                font-size: 0.74rem;
+                margin-bottom: 0.32rem;
+            }
+            .kpi-value {
+                font-size: 1.23rem;
+                line-height: 1.18;
+                letter-spacing: -0.035em;
+            }
+            .panel-head,
+            .panel-shell,
+            .status-card {
+                border-radius: 17px;
+                padding: 12px 13px 11px 13px;
+                margin-bottom: 0.75rem;
+            }
+            .section-title {
+                font-size: 0.98rem;
+                line-height: 1.25;
+            }
+            .section-caption {
+                font-size: 0.84rem;
+                line-height: 1.45;
+            }
+            .title-help-icon {
+                width: 18px;
+                height: 18px;
+                font-size: 0.68rem;
+            }
+            .direction-pill {
+                font-size: 0.74rem;
+                padding: 0.32rem 0.62rem;
+                margin-bottom: 0.45rem;
+            }
+            .direction-scale-top {
+                font-size: 0.78rem;
+                margin: 0.65rem 0 0.4rem 0;
+            }
+            .direction-bar-wrap {
+                padding-top: 1.35rem;
+            }
+            .direction-bar {
+                height: 48px;
+            }
+            .direction-center-line {
+                top: 1.35rem;
+                height: 48px;
+            }
+            .direction-marker-bubble {
+                font-size: 0.72rem;
+                padding: 0.3rem 0.56rem;
+            }
+            .direction-marker-stem {
+                height: 15px;
+            }
+            .direction-scale-bottom,
+            .direction-summary {
+                font-size: 0.76rem;
+                line-height: 1.45;
+            }
+            .tree-canvas {
+                height: 280px;
+                border-radius: 16px;
+                padding: 3px;
+            }
+            .tree-node {
+                border-radius: 10px;
+                outline-width: 2px;
+                padding: 7px 7px 6px 7px;
+            }
+            .tree-label {
+                font-size: 0.76rem;
+                line-height: 1.12;
+            }
+            .tree-share {
+                font-size: 0.68rem;
+            }
+            .subsection-title {
+                font-size: 1.02rem;
+                margin-top: 0.8rem;
+            }
+            .subsection-caption {
+                font-size: 0.82rem;
+                line-height: 1.45;
+            }
+            .compare-board {
+                padding: 11px 12px 9px 12px;
+                border-radius: 18px;
+            }
+            .compare-table {
+                min-width: 980px;
+            }
+            .compare-table th {
+                font-size: 0.68rem;
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+            .compare-table td {
+                font-size: 0.76rem;
+                padding: 8px;
+            }
+            .empty-state {
+                border-radius: 20px;
+                padding: 30px 18px;
+            }
+            .empty-title {
+                font-size: 1rem;
+            }
+        }
         </style>
         """,
         unsafe_allow_html=True,
