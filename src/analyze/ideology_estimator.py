@@ -9,7 +9,9 @@ import pandas as pd
 # Iran-war corpus, not a channel's inherent political identity.
 CUE_SCORE_WEIGHT = 0.80
 FRAME_SCORE_WEIGHT = 0.20
-EXTERNAL_REFERENCE_WEIGHT = 0.018
+# Disabled (2026-11): a fixed per-channel anchor equal to the label threshold
+# decided several channels' labels by itself. Kept only for transparency.
+EXTERNAL_REFERENCE_WEIGHT = 0.0
 LOW_THRESHOLD = -0.018
 HIGH_THRESHOLD = 0.018
 
@@ -89,9 +91,9 @@ def label_tilt(
 ) -> str:
     """Map relative score into project ideology labels."""
     if score <= low_threshold:
-        return "\uc9c4\ubcf4\uc801 \uae30\uc6b8\uae30"
+        return "외교·인도주의 기울기"
     if score >= high_threshold:
-        return "\ubcf4\uc218\uc801 \uae30\uc6b8\uae30"
+        return "강경 안보 기울기"
     return "\ud63c\ud569/\uc911\uac04"
 
 
