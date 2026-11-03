@@ -2536,6 +2536,7 @@ def build_frame_donut(frame_dist_df: pd.DataFrame) -> go.Figure:
             ),
             text=[f"{value:.1f}%" for value in chart_df["share_pct"]],
             textposition="outside",
+            cliponaxis=False,
             hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
         )
     ).update_layout(
@@ -2544,6 +2545,7 @@ def build_frame_donut(frame_dist_df: pd.DataFrame) -> go.Figure:
         xaxis_title="비중(%)",
         yaxis_title="",
         xaxis=dict(
+            range=[0, float(chart_df["share_pct"].max()) * 1.18],
             tickfont=dict(size=11, color="#64748B"),
             title_font=dict(size=12, color="#475569"),
             gridcolor="rgba(148,163,184,0.18)",
@@ -2583,6 +2585,7 @@ def build_reaction_donut(audience_channel_df: pd.DataFrame) -> go.Figure:
             ),
             text=[f"{value:.1f}%" for value in chart_df["share_pct"]],
             textposition="outside",
+            cliponaxis=False,
             hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
         )
     ).update_layout(
@@ -2591,6 +2594,7 @@ def build_reaction_donut(audience_channel_df: pd.DataFrame) -> go.Figure:
         xaxis_title="비중(%)",
         yaxis_title="",
         xaxis=dict(
+            range=[0, float(chart_df["share_pct"].max()) * 1.18],
             tickfont=dict(size=11, color="#64748B"),
             title_font=dict(size=12, color="#475569"),
             gridcolor="rgba(148,163,184,0.18)",
@@ -3514,6 +3518,7 @@ def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
             ),
             text=[f"{value:.1f}%" for value in chart_df["share_pct"]],
             textposition="outside",
+            cliponaxis=False,
             hovertemplate="%{y}: %{x:.1f}%<extra></extra>",
         )
     )
@@ -3523,6 +3528,7 @@ def build_script_keyword_bar_chart(topic_video_df: pd.DataFrame) -> go.Figure:
         xaxis_title="비중(%)",
         yaxis_title="",
         xaxis=dict(
+            range=[0, float(chart_df["share_pct"].max()) * 1.18],
             tickfont=dict(size=11, color="#64748B"),
             title_font=dict(size=12, color="#475569"),
             gridcolor="rgba(148,163,184,0.18)",
